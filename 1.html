@@ -274,6 +274,15 @@ th{background:#f0f0f0;}
         </div>
       </div>
 
+      <div style="margin-top:14px;">
+        <label for="inspYearsSel1" style="margin-top:0;font-size:13px;">Inspection history (years):</label>
+        <select id="inspYearsSel1" style="display:block;margin-top:4px;padding:6px 10px;border:1px solid #ccc;border-radius:3px;font-size:13px;min-width:180px;">
+          <option value="3">Last 3 years</option>
+          <option value="5">Last 5 years</option>
+          <option value="10" selected>Last 10 years</option>
+        </select>
+      </div>
+
       <button type="submit" class="btn" id="generateBtn" style="margin-top:14px;">⚙ Generate Asset &amp; Inspection Records</button>
     </form>
 
@@ -294,6 +303,14 @@ th{background:#f0f0f0;}
       <label for="existingAssetFile">Upload Existing Asset File (.xlsx):</label>
       <input type="file" id="existingAssetFile" accept=".xlsx" required/>
       <div id="assetReadStatus" style="margin-top:6px;font-size:13px;"></div>
+      <div style="margin-top:10px;">
+        <label for="inspYearsSel2" style="margin-top:0;font-size:13px;">Inspection history (years):</label>
+        <select id="inspYearsSel2" style="display:block;margin-top:4px;padding:6px 10px;border:1px solid #ccc;border-radius:3px;font-size:13px;min-width:180px;" onchange="refreshMode2Preview()">
+          <option value="3">Last 3 years</option>
+          <option value="5">Last 5 years</option>
+          <option value="10" selected>Last 10 years</option>
+        </select>
+      </div>
       <button type="submit" class="btn orange" style="margin-top:12px">⚙ Generate Inspection Records</button>
     </form>
   </div>
@@ -1142,7 +1159,7 @@ async function generateFromHeader(header, assetType, spacingKm, generateBtn) {
       const inspMeasCols = extractMeasCols(header);
       const inspHeader   = buildInspHeader(header);
 
-      const YEARS=10, surveyDates=buildSurveyDates(YEARS);
+      const YEARS=parseInt(document.getElementById('inspYearsSel1').value)||10, surveyDates=buildSurveyDates(YEARS);
       const total=YEARS*assets.length;
       const inspRows=[]; let cnt=0;
 
@@ -1196,6 +1213,11 @@ async function generateFromHeader(header, assetType, spacingKm, generateBtn) {
 /* ═══════════════════════════════════════════════════
    MODE 2 — FILE SELECT PREVIEW
 ═══════════════════════════════════════════════════ */
+function refreshMode2Preview() {
+  const fileInput = document.getElementById('existingAssetFile');
+  if (fileInput && fileInput.files.length) fileInput.dispatchEvent(new Event('change'));
+}
+
 document.getElementById('existingAssetFile').addEventListener('change', function(){
   const el=document.getElementById('assetReadStatus'), file=this.files[0]; if(!file) return;
   const r=new FileReader();
@@ -1208,8 +1230,9 @@ document.getElementById('existingAssetFile').addEventListener('change', function
       const sc=hdr.findIndex(h=>/Segment\*/i.test(h));
       if(nc===-1||sc===-1){el.style.color='#e74c3c';el.textContent='⚠ Could not find "Asset Name*" or "Segment*" columns.';return;}
       const cnt=rows.slice(1).filter(r=>r[nc]&&String(r[nc]).trim()).length;
+      const previewYears=parseInt(document.getElementById('inspYearsSel2').value)||10;
       el.style.color='#27ae60';
-      el.textContent=`✅ Found ${cnt.toLocaleString()} assets → will generate ${(cnt*10).toLocaleString()} inspection records (10 annual surveys).`;
+      el.textContent=`✅ Found ${cnt.toLocaleString()} assets → will generate ${(cnt*previewYears).toLocaleString()} inspection records (${previewYears} annual surveys).`;
     }catch(err){el.style.color='#e74c3c';el.textContent='⚠ Could not read file: '+err.message;}
   };
   r.readAsBinaryString(file);
@@ -1262,7 +1285,7 @@ document.getElementById('inspOnlyForm').addEventListener('submit', async functio
       const inspMeasCols2 = extractMeasCols(hdr);
       const inspHeader2   = buildInspHeader(hdr);
 
-      const YEARS=10, surveyDates=buildSurveyDates(YEARS);
+      const YEARS=parseInt(document.getElementById('inspYearsSel2').value)||10, surveyDates=buildSurveyDates(YEARS);
       const total=YEARS*assets.length;
       const inspRows=[]; let cnt=0;
 
