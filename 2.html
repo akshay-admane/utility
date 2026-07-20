@@ -53,7 +53,7 @@
     cursor: pointer;
     transition: all 0.25s ease;
     background: var(--surface);
-    margin-bottom: 32px;
+    margin-bottom: 24px;
   }
   .upload-zone:hover, .upload-zone.drag-over {
     border-color: var(--accent);
@@ -75,6 +75,174 @@
     padding: 6px 16px;
     border-radius: 20px;
     letter-spacing: 1px;
+  }
+
+  /* Edit Request toggle (additive, on top of always-on Auto Fill) */
+  .edit-toggle-bar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 20px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .edit-toggle-info { flex: 1; min-width: 200px; }
+  .edit-toggle-title { font-family: var(--sans); font-weight: 700; font-size: 13px; color: #fff; }
+  .edit-toggle-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .switch {
+    position: relative;
+    width: 46px;
+    height: 26px;
+    flex-shrink: 0;
+  }
+  .switch input { display: none; }
+  .switch-track {
+    position: absolute;
+    inset: 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .switch-track::before {
+    content: '';
+    position: absolute;
+    width: 18px; height: 18px;
+    left: 3px; top: 3px;
+    background: var(--muted);
+    border-radius: 50%;
+    transition: all 0.2s ease;
+  }
+  .switch input:checked + .switch-track { background: rgba(255,204,0,0.15); border-color: var(--warn); }
+  .switch input:checked + .switch-track::before { transform: translateX(20px); background: var(--warn); }
+
+  /* Metadata edit count control (Edit Request mode) */
+  .metadata-count-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid rgba(255,204,0,0.25);
+    border-radius: 12px;
+    padding: 14px 20px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .metadata-count-bar label {
+    font-size: 11px;
+    color: var(--warn);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+  .metadata-count-bar input[type="number"] {
+    width: 80px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    outline: none;
+  }
+  .metadata-count-bar input[type="number"]:focus { border-color: var(--warn); }
+
+  .badge-edit { background: rgba(255,204,0,0.12); color: var(--warn); border: 1px solid rgba(255,204,0,0.3); }
+  .field-edited { color: var(--warn) !important; }
+  .edited-tag {
+    font-size: 9px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(255,204,0,0.12);
+    color: var(--warn);
+    border: 1px solid rgba(255,204,0,0.3);
+    margin-left: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* assetMetadataModification log panel */
+  .mod-log {
+    margin: 0 0 20px;
+    padding: 14px 16px;
+    background: rgba(255,204,0,0.04);
+    border: 1px solid rgba(255,204,0,0.2);
+    border-radius: 10px;
+  }
+  .mod-log-title {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--warn);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  .mod-log-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    padding: 6px 0;
+    border-top: 1px solid rgba(255,204,0,0.1);
+  }
+  .mod-log-row:first-of-type { border-top: none; padding-top: 0; }
+  .mod-log-field { color: #fff; font-weight: 600; min-width: 160px; }
+  .mod-log-arrow { color: var(--muted); }
+  .mod-log-arrow strong { color: var(--warn); font-weight: 600; }
+
+  /* Cutoff date control (pre-upload + inside result actions) */
+  .cutoff-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 20px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+  .cutoff-bar label,
+  .cutoff-control label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+  .cutoff-bar input[type="date"],
+  .cutoff-control input[type="date"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    outline: none;
+    color-scheme: dark;
+  }
+  .cutoff-bar input[type="date"]:focus,
+  .cutoff-control input[type="date"]:focus {
+    border-color: var(--accent);
+  }
+  .cutoff-hint { font-size: 10px; color: var(--muted); width: 100%; text-align: center; margin-top: 2px; }
+
+  .cutoff-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
   }
 
   /* Processing animation */
@@ -223,6 +391,9 @@
     gap: 12px;
     padding: 24px 28px;
     flex-wrap: wrap;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,0,0,0.15);
   }
 
   .btn {
@@ -276,11 +447,35 @@
 <div class="app">
   <header>
     <div class="logo">MTX<span>·</span>AutoFill</div>
-    <div class="tagline">Drop file → Auto-filled → Download</div>
+    <div class="tagline">Drop file → Auto-filled / Edit Request → Download</div>
   </header>
+
+  <!-- Edit Request toggle: Auto Fill always runs; this is an optional extra layer on top -->
+  <div class="edit-toggle-bar" id="editToggleBar">
+    <div class="edit-toggle-info">
+      <div class="edit-toggle-title">✎ Also include Edit Request changes</div>
+      <div class="edit-toggle-sub">Auto Fill always runs first. Turn this on to additionally log a change request (assetMetadataModification) for asset name, location, coordinates and existing metadata values — the actual values themselves are left untouched, exactly like a pending CorInsights edit request.</div>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="editRequestToggle" onchange="toggleEditRequest()">
+      <span class="switch-track"></span>
+    </label>
+  </div>
+
+  <!-- Metadata edit count (only relevant once the Edit Request toggle is on) -->
+  <div class="metadata-count-bar" id="metadataCountBar" style="display:none;">
+    <label for="metadataCountInput">Metadata edits per asset</label>
+    <input type="number" id="metadataCountInput" min="0" value="1">
+    <div class="cutoff-hint">Number of existing associatedMetadata values to modify per asset (numeric +1, decimal +0.01, boolean toggled). Text values are always left unchanged, and no metadata entries are added or removed.</div>
+  </div>
 
   <!-- Upload -->
   <div id="uploadSection">
+    <div class="cutoff-bar">
+      <label for="preCutoffDateInput">Survey dates before</label>
+      <input type="date" id="preCutoffDateInput">
+      <div class="cutoff-hint">All generated measurement dates will fall strictly before this date. Leave blank to auto-use the survey's due date (or today, if none).</div>
+    </div>
     <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
       <input type="file" id="fileInput" accept=".mtx,.json">
       <div class="upload-icon">📂</div>
@@ -293,8 +488,8 @@
   <!-- Processing -->
   <div id="processingSection">
     <div class="spinner"></div>
-    <div class="processing-text">Auto-filling survey…</div>
-    <div class="processing-sub">Generating values, calculating statuses, writing coordinates…</div>
+    <div class="processing-text" id="processingText">Auto-filling survey…</div>
+    <div class="processing-sub" id="processingSub">Generating values, calculating statuses, writing coordinates…</div>
   </div>
 
   <!-- Result -->
@@ -307,13 +502,17 @@
         </div>
         <div class="badge-row" id="badgeRow"></div>
       </div>
-      <div id="assetsOutput"></div>
-      <div class="actions">
-        <button class="btn btn-primary" onclick="downloadOutput()">⬇ Download Completed MTX</button>
-        <button class="btn btn-regen" onclick="regenerate()">↺ Regenerate Random</button>
-        <button class="btn btn-allmet" onclick="makeAllThresholdMet()">✓ Make All Threshold Met</button>
-        <button class="btn btn-secondary" onclick="resetTool()">Load New File</button>
+      <div class="actions" id="actionsBar">
+        <div class="cutoff-control" id="cutoffControlWrap">
+          <label for="cutoffDateInput">Dates before</label>
+          <input type="date" id="cutoffDateInput">
+        </div>
+        <button class="btn btn-primary" id="btnDownload" onclick="downloadOutput()">⬇ Download</button>
+        <button class="btn btn-regen" id="btnRegen" onclick="regenerate()">↺ Regenerate Random</button>
+        <button class="btn btn-allmet" id="btnAllMet" onclick="makeAllThresholdMet()">✓ Make All Threshold Met</button>
+        <button class="btn btn-secondary" id="btnReset" onclick="resetTool()">Load New File</button>
       </div>
+      <div id="assetsOutput"></div>
     </div>
   </div>
 </div>
@@ -325,6 +524,30 @@ let surveyData = null;
 let filledData = null;
 let originalFileName = '';
 let forceThresholdMet = false;
+let currentCutoffDate = null; // Date object — all generated measurementDates will be strictly before this
+let applyEditRequest = false; // Auto Fill always runs; this is an OPTIONAL extra layer on top of it
+let lastEditedAssetNames = new Set(); // asset names touched by the edit-request layer (for UI tags)
+
+// ── Edit Request toggle (additive — Auto Fill always happens regardless) ──────
+function toggleEditRequest() {
+  applyEditRequest = document.getElementById('editRequestToggle').checked;
+  document.getElementById('metadataCountBar').style.display = applyEditRequest ? 'flex' : 'none';
+
+  updateButtonVisibility();
+
+  // If a file is already loaded, re-run processing with the new setting.
+  if (surveyData) {
+    runProcessing();
+  }
+}
+
+// Shows/hides action buttons and controls. Regenerate / Make All Threshold Met
+// stay visible always, since Auto Fill always runs regardless of the toggle.
+function updateButtonVisibility() {
+  document.getElementById('btnDownload').textContent = applyEditRequest
+    ? '⬇ Download Completed + Edit Request MTX'
+    : '⬇ Download Completed MTX';
+}
 
 // ── Drag & Drop ──────────────────────────────────────────────────────────────
 const dropZone = document.getElementById('dropZone');
@@ -340,18 +563,22 @@ dropZone.addEventListener('drop', e => {
 });
 fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
 
+const metadataCountInputEl = document.getElementById('metadataCountInput');
+if (metadataCountInputEl) {
+  metadataCountInputEl.addEventListener('change', () => {
+    if (surveyData && applyEditRequest) runProcessing();
+  });
+}
+
 function handleFile(file) {
   originalFileName = file.name.replace(/\.mtx$/i, '');
   const reader = new FileReader();
   reader.onload = e => {
     try {
       surveyData = JSON.parse(e.target.result);
-      showProcessing();
-      setTimeout(() => {
-        forceThresholdMet = false;
-        filledData = autoFill(surveyData, false);
-        showResult(filledData);
-      }, 900);
+      forceThresholdMet = false;
+      currentCutoffDate = resolveInitialCutoff(surveyData);
+      runProcessing();
     } catch {
       showToast('Could not parse file — make sure it is a valid .mtx JSON file', 'error');
     }
@@ -359,10 +586,96 @@ function handleFile(file) {
   reader.readAsText(file);
 }
 
+// Auto Fill always runs against the original surveyData. If the Edit Request
+// toggle is on, generateEditRequest is layered on top of the auto-filled
+// result as an additional, optional pass (asset name / coordinates / a
+// configurable number of existing metadata values).
+function runProcessing() {
+  if (!surveyData) return;
+  showProcessing();
+  const procText = document.getElementById('processingText');
+  const procSub = document.getElementById('processingSub');
+  if (applyEditRequest) {
+    if (procText) procText.textContent = 'Auto-filling survey + generating edit request…';
+    if (procSub) procSub.textContent = 'Generating values, calculating statuses, then updating name/coordinates/metadata…';
+  } else {
+    if (procText) procText.textContent = 'Auto-filling survey…';
+    if (procSub) procSub.textContent = 'Generating values, calculating statuses, writing coordinates…';
+  }
+
+  setTimeout(() => {
+    if (!currentCutoffDate) currentCutoffDate = resolveInitialCutoff(surveyData);
+    let result = autoFill(surveyData, forceThresholdMet, currentCutoffDate);
+    if (applyEditRequest) {
+      result = generateEditRequest(result, getMetadataEditCount());
+    }
+    filledData = result;
+    showResult(filledData);
+  }, 900);
+}
+
+function getMetadataEditCount() {
+  const el = document.getElementById('metadataCountInput');
+  if (!el) return 1;
+  const v = parseInt(el.value, 10);
+  return (isNaN(v) || v < 0) ? 0 : v;
+}
+
+// ── Cutoff date helpers ────────────────────────────────────────────────────────
+// Decide the cutoff date to use for the very first autofill pass:
+// 1. If the user typed a date into the pre-upload field, use that.
+// 2. Otherwise fall back to the survey's dueDate (date part only).
+// 3. Otherwise fall back to today.
+function resolveInitialCutoff(data) {
+  const preInput = document.getElementById('preCutoffDateInput');
+  if (preInput && preInput.value) {
+    return dateInputValueToDate(preInput.value);
+  }
+  if (data && data.dueDate) {
+    const d = new Date(data.dueDate);
+    if (!isNaN(d.getTime())) {
+      return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+    }
+  }
+  const today = new Date();
+  return new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+}
+
+// Parses a <input type="date"> value ("YYYY-MM-DD") as a UTC midnight Date.
+function dateInputValueToDate(value) {
+  const d = new Date(value + 'T00:00:00.000Z');
+  return isNaN(d.getTime()) ? new Date() : d;
+}
+
+// Formats a Date object back into "YYYY-MM-DD" for populating <input type="date">.
+function dateToInputValue(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+// Reads whatever cutoff date is currently set in the result screen's control
+// (falls back to currentCutoffDate, then today).
+function getCutoffFromInput() {
+  const input = document.getElementById('cutoffDateInput');
+  if (input && input.value) {
+    return dateInputValueToDate(input.value);
+  }
+  return currentCutoffDate || new Date();
+}
+
+// Generates a random Date strictly before `cutoff`, spread across the
+// `daysBack` days preceding it, so measurement dates for a survey look
+// realistically staggered rather than all identical.
+function randomDateBefore(cutoff, daysBack = 90) {
+  const cutoffTime = cutoff.getTime();
+  const rangeMs = daysBack * 24 * 60 * 60 * 1000;
+  const minOffsetMs = 60 * 1000; // at least 1 minute before cutoff, guarantees strictly-before
+  const offset = minOffsetMs + Math.floor(Math.random() * Math.max(rangeMs - minOffsetMs, minOffsetMs));
+  return new Date(cutoffTime - offset);
+}
+
 // ── Auto-fill logic ───────────────────────────────────────────────────────────
-function autoFill(data, forceAllMet = false) {
+function autoFill(data, forceAllMet = false, cutoffDate = new Date()) {
   const output = JSON.parse(JSON.stringify(data));
-  const now = new Date();
 
   output.assets.forEach(asset => {
     // Asset-level fields
@@ -376,12 +689,180 @@ function autoFill(data, forceAllMet = false) {
     asset.assetMeasurementCriterias.forEach(c => {
       const val = generateValue(c, forceAllMet);
       c.measurementValue = val;
-      c.measurementDate = randomDateNear(now).toISOString();
+      c.measurementDate = randomDateBefore(cutoffDate).toISOString();
       c.measurementStatus = computeStatus(c, val);
     });
   });
 
   return output;
+}
+
+// ── Edit Request logic ────────────────────────────────────────────────────────
+// Builds an "edit request" version of the survey: existing values only are
+// modified in place (asset name, latitude/longitude, and a configurable number
+// of existing associatedMetadata values per asset). No properties are ever
+// added, removed, renamed, or reordered — the MTX schema is fully preserved.
+function generateEditRequest(data, metadataCountPerAsset = 1) {
+  const output = JSON.parse(JSON.stringify(data));
+  lastEditedAssetNames = new Set();
+
+  output.assets.forEach(asset => {
+    // IMPORTANT: this is a *change request*, not a direct edit. The real
+    // field values (assetName, locationDescription, latitude, longitude,
+    // associatedMetadata values) are left completely untouched — only the
+    // assetMetadataModification log records what change is being proposed,
+    // exactly like CorInsights does. previousValue always equals the value
+    // still sitting in the actual field; proposedValue is what would be
+    // applied if the request were approved.
+    const modificationLog = [];
+
+    // ── Asset-level proposed changes ─────────────────────────────────────────
+    if (typeof asset.assetName === 'string' && asset.assetName !== '') {
+      modificationLog.push({
+        changeType: 'asset',
+        fieldName: 'assetName',
+        previousValue: asset.assetName,
+        proposedValue: asset.assetName + '_Updated',
+        measurementSource: null,
+        measurementType: null,
+        measurementCriteriaId: null
+      });
+    }
+
+    if (typeof asset.locationDescription === 'string' && asset.locationDescription !== '') {
+      modificationLog.push({
+        changeType: 'asset',
+        fieldName: 'locationDescription',
+        previousValue: asset.locationDescription,
+        proposedValue: asset.locationDescription + '_Updated',
+        measurementSource: null,
+        measurementType: null,
+        measurementCriteriaId: null
+      });
+    }
+
+    if (typeof asset.latitude === 'string' && asset.latitude !== '') {
+      modificationLog.push({
+        changeType: 'asset',
+        fieldName: 'latitude',
+        previousValue: asset.latitude,
+        proposedValue: shiftCoordinateString(asset.latitude, 0.001),
+        measurementSource: null,
+        measurementType: null,
+        measurementCriteriaId: null
+      });
+    }
+
+    if (typeof asset.longitude === 'string' && asset.longitude !== '') {
+      modificationLog.push({
+        changeType: 'asset',
+        fieldName: 'longitude',
+        previousValue: asset.longitude,
+        proposedValue: shiftCoordinateString(asset.longitude, 0.001),
+        measurementSource: null,
+        measurementType: null,
+        measurementCriteriaId: null
+      });
+    }
+
+    // ── Measurement-level proposed changes (associatedMetadata) ─────────────
+    // Only EXISTING metadata entries are ever referenced — nothing is added,
+    // removed, or renamed, and the actual m.value is never mutated.
+    let modifiedCount = 0;
+    if (metadataCountPerAsset > 0 && Array.isArray(asset.assetMeasurementCriterias)) {
+      asset.assetMeasurementCriterias.forEach(c => {
+        if (modifiedCount >= metadataCountPerAsset) return;
+        if (!Array.isArray(c.associatedMetadata)) return;
+        c.associatedMetadata.forEach(m => {
+          if (modifiedCount >= metadataCountPerAsset) return;
+          if (!m || typeof m !== 'object' || !('value' in m)) return;
+          const result = modifyMetadataValue(m.value);
+          if (result.changed) {
+            modifiedCount++;
+            modificationLog.push({
+              changeType: 'measurement',
+              fieldName: m.key,
+              previousValue: m.value,
+              proposedValue: result.value,
+              measurementSource: c.measurementSource,
+              measurementType: c.measurementType,
+              measurementCriteriaId: c.assetMeasurementCriteriaId
+            });
+          }
+          // Text / unsupported values are safely skipped and left unchanged.
+        });
+      });
+    }
+
+    // The assetMetadataModification array is created if it isn't already
+    // present — CorInsights itself only adds this field once a change
+    // request exists, so a blank/never-edited survey won't have it yet.
+    asset.assetMetadataModification = modificationLog;
+
+    if (modificationLog.length > 0) {
+      lastEditedAssetNames.add(asset.assetName);
+    }
+  });
+
+  return output;
+}
+
+// Adds `delta` to a numeric-string coordinate while preserving its original
+// decimal precision and its type as a string (schema requirement).
+// e.g. shiftCoordinateString("18.520430", 0.001) -> "18.521430"
+function shiftCoordinateString(strVal, delta) {
+  const num = parseFloat(strVal);
+  if (isNaN(num)) return strVal;
+  const decimalPart = strVal.split('.')[1];
+  const decimals = decimalPart ? decimalPart.length : 6;
+  return (num + delta).toFixed(decimals);
+}
+
+// Applies the Edit Request value-modification rules to a single metadata value:
+//   - Numeric string  ("25")    -> increment by 1            ("26")
+//   - Decimal string  ("1.25")  -> increment smallest place   ("1.26")
+//   - Boolean         (true)    -> toggled                    (false)
+//   - Boolean-like str ("true") -> toggled                    ("false")
+//   - Text / anything else -> left unchanged (skipped)
+// Returns { changed, value }.
+function modifyMetadataValue(value) {
+  if (typeof value === 'boolean') {
+    return { changed: true, value: !value };
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+
+    // Boolean-like text
+    if (trimmed.toLowerCase() === 'true') return { changed: true, value: 'false' };
+    if (trimmed.toLowerCase() === 'false') return { changed: true, value: 'true' };
+
+    // Decimal numeric string, e.g. "1.25" -> "1.26", "-0.839" -> "-0.829", "0.1" -> "0.11"
+    // Rule (verified against real CorInsights output): always add a flat 0.01,
+    // formatted to max(original decimal places, 2).
+    if (/^-?\d+\.\d+$/.test(trimmed)) {
+      const originalDecimals = trimmed.split('.')[1].length;
+      const outDecimals = Math.max(originalDecimals, 2);
+      const incremented = parseFloat(trimmed) + 0.01;
+      return { changed: true, value: incremented.toFixed(outDecimals) };
+    }
+
+    // Plain integer numeric string, e.g. "25"
+    if (/^-?\d+$/.test(trimmed)) {
+      const incremented = parseInt(trimmed, 10) + 1;
+      return { changed: true, value: String(incremented) };
+    }
+
+    // Plain numeric type stored as number-like (defensive, unlikely for this schema)
+    return { changed: false, value: value };
+  }
+
+  if (typeof value === 'number') {
+    return { changed: true, value: Number.isInteger(value) ? value + 1 : parseFloat((value + 0.01).toFixed(2)) };
+  }
+
+  // Unsupported type — leave untouched
+  return { changed: false, value: value };
 }
 
 // Parse operator + numeric threshold out of a criteria string.
@@ -596,6 +1077,8 @@ function showResult(data) {
   document.getElementById('surveySubtitle').textContent =
     `${data.surveyFrequencyType} · ${data.dataCollectionType} · Assigned to ${data.assignedTo}`;
 
+  updateButtonVisibility();
+
   // Badges
   const totalCriteria = data.assets.reduce((s, a) => s + a.assetMeasurementCriterias.length, 0);
   const metCount = data.assets.reduce((s, a) =>
@@ -603,12 +1086,28 @@ function showResult(data) {
   const notMetCount = data.assets.reduce((s, a) =>
     s + a.assetMeasurementCriterias.filter(c => c.measurementStatus === 'Threshold Not Met').length, 0);
 
-  document.getElementById('badgeRow').innerHTML = `
-    <span class="badge badge-blue">${data.assets.length} Asset${data.assets.length !== 1 ? 's' : ''}</span>
-    <span class="badge badge-blue">${totalCriteria} Criteria</span>
-    ${metCount > 0 ? `<span class="badge badge-green">✓ ${metCount} Met</span>` : ''}
-    ${notMetCount > 0 ? `<span class="badge" style="background:rgba(255,77,109,0.1);color:#ff4d6d;border:1px solid rgba(255,77,109,0.3)">✗ ${notMetCount} Not Met</span>` : ''}
-  `;
+  if (applyEditRequest) {
+    document.getElementById('badgeRow').innerHTML = `
+      <span class="badge badge-edit">✎ + Edit Request</span>
+      <span class="badge badge-blue">${data.assets.length} Asset${data.assets.length !== 1 ? 's' : ''}</span>
+      <span class="badge badge-blue">${totalCriteria} Criteria</span>
+      ${metCount > 0 ? `<span class="badge badge-green">✓ ${metCount} Met</span>` : ''}
+      ${notMetCount > 0 ? `<span class="badge" style="background:rgba(255,77,109,0.1);color:#ff4d6d;border:1px solid rgba(255,77,109,0.3)">✗ ${notMetCount} Not Met</span>` : ''}
+    `;
+  } else {
+    document.getElementById('badgeRow').innerHTML = `
+      <span class="badge badge-blue">${data.assets.length} Asset${data.assets.length !== 1 ? 's' : ''}</span>
+      <span class="badge badge-blue">${totalCriteria} Criteria</span>
+      ${metCount > 0 ? `<span class="badge badge-green">✓ ${metCount} Met</span>` : ''}
+      ${notMetCount > 0 ? `<span class="badge" style="background:rgba(255,77,109,0.1);color:#ff4d6d;border:1px solid rgba(255,77,109,0.3)">✗ ${notMetCount} Not Met</span>` : ''}
+    `;
+  }
+
+  // Keep the cutoff-date control on the result screen in sync with whatever cutoff was just used
+  const cutoffInput = document.getElementById('cutoffDateInput');
+  if (cutoffInput && currentCutoffDate) {
+    cutoffInput.value = dateToInputValue(currentCutoffDate);
+  }
 
   // Assets
   const container = document.getElementById('assetsOutput');
@@ -617,9 +1116,12 @@ function showResult(data) {
   data.assets.forEach(asset => {
     const div = document.createElement('div');
     div.className = 'asset-summary';
+    const editOn = applyEditRequest;
+    const modLog = (editOn && Array.isArray(asset.assetMetadataModification)) ? asset.assetMetadataModification : [];
     div.innerHTML = `
       <div class="asset-name-row">
         <span class="asset-label">${asset.assetName}</span>
+        ${modLog.length > 0 ? '<span class="edited-tag">Edit Requested</span>' : ''}
         <span class="asset-type-tag">${asset.assetType}</span>
       </div>
       <div class="kv-grid">
@@ -629,15 +1131,26 @@ function showResult(data) {
         <div class="kv-item"><div class="kv-label">Survey Latitude</div><div class="kv-value">${asset.surveyLatitude}</div></div>
         <div class="kv-item"><div class="kv-label">Survey Longitude</div><div class="kv-value">${asset.surveyLongitude}</div></div>
       </div>
+      ${modLog.length > 0 ? `
+      <div class="mod-log">
+        <div class="mod-log-title">assetMetadataModification (${modLog.length}) — requested, not yet applied</div>
+        ${modLog.map(entry => `
+          <div class="mod-log-row">
+            <span class="mod-log-field">${entry.fieldName}</span>
+            <span class="mod-log-arrow">${entry.previousValue} → <strong>${entry.proposedValue}</strong></span>
+            ${entry.measurementType ? `<span class="tag">${entry.measurementType} · ${entry.measurementSource}</span>` : ''}
+          </div>
+        `).join('')}
+      </div>` : ''}
       <div class="criteria-list">
-        ${asset.assetMeasurementCriterias.map(c => renderCriteriaCard(c)).join('')}
+        ${asset.assetMeasurementCriterias.map(c => renderCriteriaCard(c, editOn)).join('')}
       </div>
     `;
     container.appendChild(div);
   });
 }
 
-function renderCriteriaCard(c) {
+function renderCriteriaCard(c, isEditMode = false) {
   const hasThreshold = c.threshold != null && c.threshold !== '' && c.threshold !== 'null';
   const hasCriteria = c.criteria != null && c.criteria !== '' && c.criteria !== 'null';
 
@@ -650,6 +1163,14 @@ function renderCriteriaCard(c) {
       const req = (depol - shiftV).toFixed(3);
       depolTag = `<span class="tag tag-depol">Depol: ${depol}V → must be &lt; ${req}V</span>`;
     }
+  }
+
+  // In Edit Request mode, surface associatedMetadata values (some may have just been modified)
+  let metadataTags = '';
+  if (isEditMode && Array.isArray(c.associatedMetadata) && c.associatedMetadata.length > 0) {
+    metadataTags = c.associatedMetadata.map(m =>
+      `<span class="tag tag-depol">${m.key}: ${m.value}${m.unit ? ' ' + m.unit : ''}</span>`
+    ).join('');
   }
 
   let statusClass = 'status-na', statusText = '— No Status';
@@ -667,6 +1188,7 @@ function renderCriteriaCard(c) {
           ${hasThreshold ? `<span class="tag tag-threshold">Threshold: ${c.threshold} ${c.unit} (${c.measurementOperator})</span>` : ''}
           ${hasCriteria ? `<span class="tag tag-criteria">Criteria: ${c.criteria}</span>` : ''}
           ${depolTag}
+          ${metadataTags}
           <span class="tag tag-value">Value: ${c.measurementValue} ${c.unit}</span>
         </div>
       </div>
@@ -685,19 +1207,22 @@ function downloadOutput() {
   const blob = new Blob([JSON.stringify(filledData, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const suffix = applyEditRequest ? '_completed_edits_requested' : '_completed';
   a.href = url;
-  a.download = `${originalFileName}_completed_${ts}.mtx`;
+  a.download = `${originalFileName}${suffix}.mtx`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('Completed MTX file downloaded!', 'success');
+  showToast((applyEditRequest ? 'Completed + edit request' : 'Completed') + ' MTX file downloaded!', 'success');
 }
 
 function regenerate() {
   if (!surveyData) return;
+  currentCutoffDate = getCutoffFromInput();
   showProcessing();
   setTimeout(() => {
-    filledData = autoFill(surveyData, forceThresholdMet);
+    let result = autoFill(surveyData, forceThresholdMet, currentCutoffDate);
+    if (applyEditRequest) result = generateEditRequest(result, getMetadataEditCount());
+    filledData = result;
     showResult(filledData);
     showToast(forceThresholdMet ? 'All thresholds met — values regenerated!' : 'New random values generated!', 'success');
   }, 700);
@@ -706,9 +1231,12 @@ function regenerate() {
 function makeAllThresholdMet() {
   if (!surveyData) return;
   forceThresholdMet = true;
+  currentCutoffDate = getCutoffFromInput();
   showProcessing();
   setTimeout(() => {
-    filledData = autoFill(surveyData, true);
+    let result = autoFill(surveyData, true, currentCutoffDate);
+    if (applyEditRequest) result = generateEditRequest(result, getMetadataEditCount());
+    filledData = result;
     showResult(filledData);
     showToast('All thresholds forced to Met!', 'success');
   }, 700);
@@ -717,6 +1245,9 @@ function makeAllThresholdMet() {
 function resetTool() {
   surveyData = null;
   filledData = null;
+  currentCutoffDate = null;
+  forceThresholdMet = false;
+  lastEditedAssetNames = new Set();
   document.getElementById('uploadSection').style.display = 'block';
   document.getElementById('processingSection').style.display = 'none';
   document.getElementById('resultSection').style.display = 'none';
@@ -741,12 +1272,6 @@ function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
 
 function jitter(val, amount) {
   return val + (Math.random() * 2 - 1) * amount;
-}
-
-function randomDateNear(base) {
-  // Within last 2 hours
-  const offset = Math.floor(Math.random() * 120 * 60 * 1000);
-  return new Date(base.getTime() - offset);
 }
 
 const COMMENTS = [
