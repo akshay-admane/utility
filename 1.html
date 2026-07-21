@@ -1,1302 +1,1968 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JSON TOOL</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CSV Tool-2</title>
+
+<!-- Leaflet (much lighter than OpenLayers) -->
+<link  rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- SheetJS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
 <style>
-  :root {
-    --bg: #0a0e14;
-    --surface: #111620;
-    --surface2: #161d2a;
-    --border: #1e2a3a;
-    --accent: #00d4ff;
-    --success: #00e5a0;
-    --warn: #ffcc00;
-    --danger: #ff4d6d;
-    --text: #d8e4f0;
-    --muted: #5a7a99;
-    --mono: 'IBM Plex Mono', monospace;
-    --sans: 'Syne', sans-serif;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--mono);
-    min-height: 100vh;
-  }
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events: none;
-  }
-  .app { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding: 40px 24px; }
+html,body{height:100%;margin:0;padding:0;font-family:Arial,sans-serif;background:#f4f6f8;}
+.container{max-width:980px;margin:20px auto;padding:14px 18px;background:#fff;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.12);}
+h2{color:#2c3e50;margin:0 0 14px;}
+h3{color:#2c3e50;margin:8px 0 6px;}
+label{display:block;margin-top:14px;font-weight:bold;font-size:13px;}
+input[type="file"]{margin-top:4px;font-size:13px;}
+input[type="number"]{padding:5px 8px;border:1px solid #ccc;border-radius:3px;font-size:13px;width:90px;}
+.help{color:#888;font-weight:normal;font-size:11px;}
 
-  header { margin-bottom: 48px; text-align: center; }
-  .logo { font-family: var(--sans); font-weight: 800; font-size: 36px; letter-spacing: -2px; color: #fff; }
-  .logo span { color: var(--accent); }
-  .tagline { font-size: 11px; color: var(--muted); margin-top: 6px; letter-spacing: 3px; text-transform: uppercase; }
+/* Mode switcher */
+.mode-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.mode-btn{padding:9px 16px;background:#ecf0f1;border:2px solid #bdc3c7;cursor:pointer;font-weight:bold;font-size:13px;border-radius:4px;color:#777;transition:all .15s;}
+.mode-btn.active{background:#2c3e50;color:#fff;border-color:#2c3e50;}
+.mode-desc{background:#f8f9fa;border-left:4px solid #3498db;padding:8px 12px;font-size:13px;color:#444;margin:10px 0 14px;border-radius:0 3px 3px 0;}
 
-  /* Upload */
-  .upload-zone {
-    border: 2px dashed var(--border);
-    border-radius: 16px;
-    padding: 64px 48px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.25s ease;
-    background: var(--surface);
-    margin-bottom: 24px;
-  }
-  .upload-zone:hover, .upload-zone.drag-over {
-    border-color: var(--accent);
-    background: rgba(0,212,255,0.04);
-    transform: translateY(-2px);
-    box-shadow: 0 16px 48px rgba(0,212,255,0.1);
-  }
-  .upload-zone input { display: none; }
-  .upload-icon { font-size: 48px; margin-bottom: 20px; }
-  .upload-zone h3 { font-family: var(--sans); font-weight: 800; font-size: 20px; color: #fff; margin-bottom: 8px; }
-  .upload-zone p { font-size: 12px; color: var(--muted); line-height: 1.7; }
-  .upload-zone .hint {
-    display: inline-block;
-    margin-top: 16px;
-    background: rgba(0,212,255,0.08);
-    border: 1px solid rgba(0,212,255,0.2);
-    color: var(--accent);
-    font-size: 11px;
-    padding: 6px 16px;
-    border-radius: 20px;
-    letter-spacing: 1px;
-  }
+/* Buttons */
+.btn{display:inline-block;margin-top:8px;padding:8px 13px;background:#3498db;color:#fff;border:none;cursor:pointer;margin-right:5px;border-radius:3px;font-size:13px;text-decoration:none;}
+.btn:hover{background:#2980b9;}
+.btn.green{background:#27ae60;} .btn.green:hover{background:#1e8449;}
+.btn.orange{background:#e67e22;} .btn.orange:hover{background:#ca6f1e;}
+.btn.red{background:#e74c3c;} .btn.red:hover{background:#c0392b;}
+.btn:disabled{background:#95a5a6;cursor:not-allowed;}
+.download-link{display:none;}
 
-  /* Edit Request toggle (additive, on top of always-on Auto Fill) */
-  .edit-toggle-bar {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 14px 20px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-  }
-  .edit-toggle-info { flex: 1; min-width: 200px; }
-  .edit-toggle-title { font-family: var(--sans); font-weight: 700; font-size: 13px; color: #fff; }
-  .edit-toggle-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .switch {
-    position: relative;
-    width: 46px;
-    height: 26px;
-    flex-shrink: 0;
-  }
-  .switch input { display: none; }
-  .switch-track {
-    position: absolute;
-    inset: 0;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-  .switch-track::before {
-    content: '';
-    position: absolute;
-    width: 18px; height: 18px;
-    left: 3px; top: 3px;
-    background: var(--muted);
-    border-radius: 50%;
-    transition: all 0.2s ease;
-  }
-  .switch input:checked + .switch-track { background: rgba(255,204,0,0.15); border-color: var(--warn); }
-  .switch input:checked + .switch-track::before { transform: translateX(20px); background: var(--warn); }
+/* Map */
+#map{width:100%;height:380px;margin-top:10px;border:1px solid #ccc;border-radius:3px;}
+.map-toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;}
+#liveCounter{display:inline-block;padding:6px 14px;background:#2c3e50;color:#fff;border-radius:3px;font-size:13px;font-weight:bold;min-width:150px;text-align:center;}
+.draw-hint{font-size:12px;color:#888;margin-top:4px;}
 
-  /* Metadata edit count control (Edit Request mode) */
-  .metadata-count-bar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    background: var(--surface);
-    border: 1px solid rgba(255,204,0,0.25);
-    border-radius: 12px;
-    padding: 14px 20px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-  }
-  .metadata-count-bar label {
-    font-size: 11px;
-    color: var(--warn);
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-  }
-  .metadata-count-bar input[type="number"] {
-    width: 80px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 13px;
-    padding: 8px 12px;
-    border-radius: 8px;
-    outline: none;
-  }
-  .metadata-count-bar input[type="number"]:focus { border-color: var(--warn); }
+/* Progress */
+#progressWrap{display:none;margin-top:12px;}
+#progressBar{width:100%;height:16px;background:#ecf0f1;border-radius:8px;overflow:hidden;}
+#progressFill{height:100%;width:0%;background:linear-gradient(90deg,#3498db,#27ae60);transition:width .12s;border-radius:8px;}
+#progressLabel{font-size:12px;color:#555;text-align:center;margin-top:3px;}
 
-  .badge-edit { background: rgba(255,204,0,0.12); color: var(--warn); border: 1px solid rgba(255,204,0,0.3); }
-  .field-edited { color: var(--warn) !important; }
-  .edited-tag {
-    font-size: 9px;
-    padding: 1px 6px;
-    border-radius: 4px;
-    background: rgba(255,204,0,0.12);
-    color: var(--warn);
-    border: 1px solid rgba(255,204,0,0.3);
-    margin-left: 6px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
+/* Status */
+.status-bar{margin-top:12px;padding:8px 12px;background:#eaf4fb;border-left:4px solid #3498db;font-size:13px;display:none;border-radius:0 3px 3px 0;}
 
-  /* assetMetadataModification log panel */
-  .mod-log {
-    margin: 0 0 20px;
-    padding: 14px 16px;
-    background: rgba(255,204,0,0.04);
-    border: 1px solid rgba(255,204,0,0.2);
-    border-radius: 10px;
-  }
-  .mod-log-title {
-    font-family: var(--sans);
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--warn);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 10px;
-  }
-  .mod-log-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    font-size: 12px;
-    padding: 6px 0;
-    border-top: 1px solid rgba(255,204,0,0.1);
-  }
-  .mod-log-row:first-of-type { border-top: none; padding-top: 0; }
-  .mod-log-field { color: #fff; font-weight: 600; min-width: 160px; }
-  .mod-log-arrow { color: var(--muted); }
-  .mod-log-arrow strong { color: var(--warn); font-weight: 600; }
+/* Tabs */
+.tab-bar{display:flex;gap:0;margin-top:18px;}
+.tab{padding:8px 16px;background:#ecf0f1;border:1px solid #ccc;cursor:pointer;font-weight:bold;font-size:13px;border-bottom:none;color:#777;}
+.tab.active{background:#fff;color:#2c3e50;border-bottom:1px solid #fff;position:relative;z-index:1;}
+.tab-content{border:1px solid #ccc;padding:10px;background:#fff;max-height:290px;overflow:auto;}
+.preview-container{margin-top:8px;max-height:240px;overflow-y:auto;overflow-x:auto;border:1px solid #ddd;}
+.preview-container table{border-collapse:collapse;min-width:max-content;}
+th,td{border:1px solid #ccc;padding:4px 8px;text-align:center;font-size:11px;white-space:nowrap;}
+th{background:#f0f0f0;}
 
-  /* Cutoff date control (pre-upload + inside result actions) */
-  .cutoff-bar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 14px 20px;
-    margin-bottom: 32px;
-    flex-wrap: wrap;
-  }
-  .cutoff-bar label,
-  .cutoff-control label {
-    font-size: 11px;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-  }
-  .cutoff-bar input[type="date"],
-  .cutoff-control input[type="date"] {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 13px;
-    padding: 8px 12px;
-    border-radius: 8px;
-    outline: none;
-    color-scheme: dark;
-  }
-  .cutoff-bar input[type="date"]:focus,
-  .cutoff-control input[type="date"]:focus {
-    border-color: var(--accent);
-  }
-  .cutoff-hint { font-size: 10px; color: var(--muted); width: 100%; text-align: center; margin-top: 2px; }
+/* Downloads */
+.download-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
+.badge{display:inline-block;background:#ecf0f1;border:1px solid #bdc3c7;border-radius:3px;padding:2px 7px;font-size:11px;color:#555;margin-left:5px;}
 
-  .cutoff-control {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 14px;
-  }
 
-  /* Processing animation */
-  #processingSection { display: none; text-align: center; padding: 48px; }
-  .spinner {
-    width: 64px; height: 64px;
-    border: 3px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin: 0 auto 24px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .processing-text { font-family: var(--sans); font-weight: 700; font-size: 18px; color: #fff; margin-bottom: 8px; }
-  .processing-sub { font-size: 12px; color: var(--muted); }
 
-  /* Result */
-  #resultSection { display: none; }
+/* Company Hierarchy Panel */
+.hier-panel{background:#f0f4ff;border:1px solid #c8d4f0;border-radius:6px;padding:14px 16px;margin-bottom:16px;}
+.hier-panel h3{margin:0 0 12px;font-size:14px;color:#2c3e50;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;}
+.hier-panel h3 .hier-toggle{font-size:11px;color:#3498db;font-weight:normal;}
+.hier-body{display:none;}
+.hier-body.open{display:block;}
+.hier-row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;margin-bottom:10px;}
+.hier-input{padding:6px 10px;border:1px solid #ccc;border-radius:3px;font-size:13px;flex:1;min-width:160px;}
+.hier-textarea{width:100%;min-height:90px;padding:7px 10px;border:1px solid #ccc;border-radius:3px;font-size:12px;font-family:monospace;resize:vertical;box-sizing:border-box;}
+.hier-btn{padding:6px 13px;border:none;border-radius:3px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap;}
+.hier-btn.parse{background:#3498db;color:#fff;} .hier-btn.parse:hover{background:#2980b9;}
+.hier-btn.clear{background:#e74c3c;color:#fff;} .hier-btn.clear:hover{background:#c0392b;}
+.hier-status{font-size:12px;margin-top:6px;min-height:16px;}
 
-  .result-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    overflow: hidden;
-    margin-bottom: 24px;
-  }
+.hier-tabs{display:flex;gap:0;margin-bottom:0;border-bottom:2px solid #d0d8f0;}
+.hier-tab{padding:6px 14px;background:transparent;border:none;cursor:pointer;font-size:12px;font-weight:bold;color:#888;border-bottom:2px solid transparent;margin-bottom:-2px;}
+.hier-tab.active{color:#3498db;border-bottom-color:#3498db;}
+.hier-tabpanel{padding-top:2px;}
+.hier-companies{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+.hier-company-card{background:#fff;border:1px solid #dde3f5;border-radius:4px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.hier-company-card.active{border-color:#3498db;background:#eaf4ff;}
+.hier-company-name{font-weight:bold;font-size:13px;color:#2c3e50;cursor:pointer;}
+.hier-l3-pills{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;}
+.hier-l3-pill{background:#e8f0fe;color:#3a5bb5;border-radius:10px;padding:2px 9px;font-size:11px;}
+.hier-l3-pill.new{background:#e8fde8;color:#1a7a1a;border:1px dashed #4caf50;}
+.hier-company-actions{display:flex;gap:4px;flex-shrink:0;}
+.hier-sm-btn{padding:3px 9px;border:none;border-radius:3px;cursor:pointer;font-size:11px;font-weight:bold;}
+.hier-sm-btn.use{background:#27ae60;color:#fff;}
+.hier-sm-btn.use:hover{background:#1e8449;}
+.hier-sm-btn.del{background:#e74c3c;color:#fff;}
+.hier-sm-btn.del:hover{background:#c0392b;}
+.hier-active-badge{display:inline-block;background:#27ae60;color:#fff;border-radius:10px;padding:1px 8px;font-size:11px;margin-left:8px;}
 
-  .result-header {
-    background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(0,229,160,0.05));
-    border-bottom: 1px solid var(--border);
-    padding: 24px 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
 
-  .result-title { font-family: var(--sans); font-weight: 800; font-size: 20px; color: #fff; }
-  .result-subtitle { font-size: 11px; color: var(--muted); margin-top: 4px; }
+/* Manual Entry form */
+.manual-l3-block{border:1px solid #dde3f5;border-radius:5px;padding:10px 12px;margin-bottom:10px;background:#fafbff;position:relative;}
+.manual-l3-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.manual-l3-name{flex:1;padding:6px 10px;border:1px solid #ccc;border-radius:3px;font-size:13px;font-weight:bold;}
+.manual-seg-row{display:flex;gap:6px;align-items:center;margin-bottom:6px;}
+.manual-seg-input{flex:1;padding:5px 9px;border:1px solid #ccc;border-radius:3px;font-size:13px;}
+.manual-seg-type{padding:5px 8px;border:1px solid #ccc;border-radius:3px;font-size:12px;background:#fff;}
+.manual-rm-btn{padding:3px 9px;background:#e74c3c;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:13px;line-height:1;}
+.manual-rm-btn:hover{background:#c0392b;}
+.manual-add-seg{padding:4px 10px;background:#3498db;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:12px;margin-top:2px;}
+.manual-add-seg:hover{background:#2980b9;}
+.manual-rm-l3{position:absolute;top:8px;right:8px;padding:3px 8px;background:#e74c3c;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:11px;}
+.manual-rm-l3:hover{background:#c0392b;}
 
-  .badge-row { display: flex; gap: 8px; flex-wrap: wrap; }
-  .badge {
-    font-size: 10px;
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-  }
-  .badge-green { background: rgba(0,229,160,0.12); color: var(--success); border: 1px solid rgba(0,229,160,0.25); }
-  .badge-blue { background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2); }
-  .badge-warn { background: rgba(255,204,0,0.1); color: var(--warn); border: 1px solid rgba(255,204,0,0.2); }
 
-  /* Asset summary */
-  .asset-summary {
-    padding: 24px 28px;
-    border-bottom: 1px solid var(--border);
-  }
+/* Asset Template section within company card */
+.hier-template-section{margin-top:8px;border-top:1px solid #e0e4f0;padding-top:8px;}
+.hier-template-label{font-size:11px;color:#777;font-weight:bold;margin-bottom:4px;}
+.hier-asset-type-row{margin-bottom:6px;}
+.hier-asset-type-name{font-size:12px;color:#2c3e50;font-weight:bold;margin-bottom:3px;}
+.hier-template-radio-row{display:flex;flex-wrap:wrap;gap:5px;margin-left:8px;}
+.hier-template-radio-row label{display:flex;align-items:center;gap:4px;font-size:11px;color:#444;cursor:pointer;background:#f0f4ff;border:1px solid #c8d4f0;border-radius:3px;padding:2px 8px;transition:all .15s;}
+.hier-template-radio-row label:hover{background:#dce8ff;}
+.hier-template-radio-row label.selected{background:#3498db;color:#fff;border-color:#2980b9;}
+.hier-template-radio-row input[type=radio]{display:none;}
+.hier-active-template-badge{display:inline-block;background:#8e44ad;color:#fff;border-radius:10px;padding:1px 8px;font-size:11px;margin-left:6px;}
 
-  .asset-name-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 16px;
-  }
-
-  .asset-label {
-    font-family: var(--sans);
-    font-weight: 700;
-    font-size: 16px;
-    color: #fff;
-  }
-
-  .asset-type-tag {
-    font-size: 10px;
-    padding: 3px 8px;
-    border-radius: 4px;
-    background: rgba(0,212,255,0.08);
-    color: var(--accent);
-    border: 1px solid rgba(0,212,255,0.15);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-
-  .kv-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 12px;
-    margin-bottom: 20px;
-  }
-
-  .kv-item { }
-  .kv-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 3px; }
-  .kv-value { font-size: 12px; color: var(--text); font-weight: 500; }
-
-  /* Criteria rows */
-  .criteria-list { display: flex; flex-direction: column; gap: 10px; }
-
-  .criteria-card {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 16px;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 12px;
-    align-items: center;
-    transition: border-color 0.2s;
-  }
-  .criteria-card:hover { border-color: rgba(0,212,255,0.25); }
-
-  .criteria-left { }
-  .criteria-type-name { font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 6px; }
-  .criteria-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-  .tag {
-    font-size: 10px;
-    padding: 2px 8px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
-    color: var(--muted);
-    background: var(--surface);
-  }
-  .tag-threshold { color: var(--warn); border-color: rgba(255,204,0,0.25); background: rgba(255,204,0,0.05); }
-  .tag-criteria { color: #ff8c60; border-color: rgba(255,140,96,0.25); background: rgba(255,140,96,0.05); }
-  .tag-value { color: var(--accent); border-color: rgba(0,212,255,0.2); background: rgba(0,212,255,0.05); }
-  .tag-depol { color: #b48aff; border-color: rgba(180,138,255,0.3); background: rgba(180,138,255,0.06); }
-
-  .criteria-right { text-align: right; min-width: 140px; }
-  .meas-value { font-size: 20px; font-weight: 600; color: #fff; margin-bottom: 4px; font-family: var(--sans); }
-  .meas-date { font-size: 10px; color: var(--muted); margin-bottom: 6px; }
-  .status-pill {
-    display: inline-block;
-    font-size: 10px;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-  }
-  .status-met { background: rgba(0,229,160,0.1); color: var(--success); border: 1px solid rgba(0,229,160,0.3); }
-  .status-not-met { background: rgba(255,77,109,0.1); color: var(--danger); border: 1px solid rgba(255,77,109,0.3); }
-  .status-na { background: rgba(90,122,153,0.08); color: var(--muted); border: 1px solid rgba(90,122,153,0.2); }
-
-  /* Actions */
-  .actions {
-    display: flex;
-    gap: 12px;
-    padding: 24px 28px;
-    flex-wrap: wrap;
-    align-items: center;
-    border-bottom: 1px solid var(--border);
-    background: rgba(0,0,0,0.15);
-  }
-
-  .btn {
-    font-family: var(--sans);
-    font-weight: 700;
-    font-size: 13px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    padding: 13px 28px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .btn-primary { background: var(--accent); color: #000; }
-  .btn-primary:hover { background: #33ddff; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,212,255,0.3); }
-  .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
-  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
-  .btn-regen { background: rgba(255,204,0,0.1); color: var(--warn); border: 1px solid rgba(255,204,0,0.25); }
-  .btn-regen:hover { background: rgba(255,204,0,0.18); }
-  .btn-allmet { background: rgba(0,229,160,0.1); color: var(--success); border: 1px solid rgba(0,229,160,0.3); }
-  .btn-allmet:hover { background: rgba(0,229,160,0.18); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,229,160,0.2); }
-
-  /* Toast */
-  .toast {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 20px;
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    transform: translateY(80px);
-    opacity: 0;
-    transition: all 0.3s ease;
-    z-index: 1000;
-  }
-  .toast.show { transform: translateY(0); opacity: 1; }
-  .toast.success { border-color: rgba(0,229,160,0.4); color: var(--success); }
-  .toast.error { border-color: rgba(255,77,109,0.4); color: var(--danger); }
 </style>
 </head>
 <body>
-<div class="app">
-  <header>
-    <div class="logo">MTX<span>·</span>AutoFill</div>
-    <div class="tagline">Drop file → Auto-filled / Edit Request → Download</div>
-  </header>
+<div class="container">
+  <h2>🛢 Pipeline Asset Import Tool</h2>
 
-  <!-- Edit Request toggle: Auto Fill always runs; this is an optional extra layer on top -->
-  <div class="edit-toggle-bar" id="editToggleBar">
-    <div class="edit-toggle-info">
-      <div class="edit-toggle-title">✎ Also include Edit Request changes</div>
-      <div class="edit-toggle-sub">Auto Fill always runs first. Turn this on to additionally log a change request (assetMetadataModification) for asset name, location, coordinates and existing metadata values — the actual values themselves are left untouched, exactly like a pending CorInsights edit request.</div>
+  <div class="mode-bar">
+    <button class="mode-btn active" id="modeBtn1" onclick="switchMode(1)">📋 Mode 1 — Create Assets &amp; Inspections</button>
+    <button class="mode-btn"        id="modeBtn2" onclick="switchMode(2)">🔍 Mode 2 — Inspections from Existing Asset File</button>
+  </div>
+  <!-- ══ COMPANY HIERARCHY PANEL ══ -->
+  <div class="hier-panel" id="hierPanel">
+    <h3 onclick="toggleHierPanel()">
+      🏢 Company Hierarchy
+      <span id="hierActiveLabel"></span>
+      <span class="hier-toggle" id="hierToggleLabel">▼ expand</span>
+    </h3>
+    <div class="hier-body" id="hierBody">
+
+      <!-- ── Tab bar ── -->
+      <div class="hier-tabs">
+        <button class="hier-tab active" id="htabParse"  onclick="switchHierTab('parse')">📥 Parse API</button>
+        <button class="hier-tab"        id="htabManual" onclick="switchHierTab('manual')">✏ Manual Entry</button>
+        <button class="hier-tab"        id="htabGist"   onclick="switchHierTab('gist')">☁ GitHub Gist Sync</button>
+        <button class="hier-tab"        id="htabBackup" onclick="switchHierTab('backup')">💾 Export / Import</button>
+      </div>
+
+      <!-- ── Parse tab ── -->
+      <div id="htabParsePanel" class="hier-tabpanel">
+        <label style="margin-top:8px;font-size:13px;">Company Name:</label>
+        <div class="hier-row" style="margin-bottom:6px;">
+          <input class="hier-input" type="text" id="hierCompanyInput" placeholder="e.g. Indian Surveys" style="max-width:260px;"/>
+        </div>
+        <label style="margin-top:0;font-size:13px;">Paste API Response (JSON):</label>
+        <textarea class="hier-textarea" id="hierJsonInput" placeholder='Paste the getAllLevel4ValueByPrimaryCompany API response here…'></textarea>
+        <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
+          <button class="hier-btn parse" onclick="parseAndSaveHierarchy()">⚙ Parse &amp; Save Level 3 Values</button>
+          <button class="hier-btn clear" onclick="document.getElementById('hierJsonInput').value=''">✕ Clear</button>
+        </div>
+      </div>
+
+      <!-- ── Manual Entry tab ── -->
+      <div id="htabManualPanel" class="hier-tabpanel" style="display:none">
+        <p style="font-size:12px;color:#666;margin:8px 0 10px;">
+          Add Level 3 values and their segments manually — for companies not yet available in the API or Gist.
+        </p>
+
+        <label style="font-size:13px;margin-top:0;">Company Name:</label>
+        <div class="hier-row" style="margin-bottom:10px;">
+          <input class="hier-input" type="text" id="manualCompanyInput"
+                 placeholder="e.g. Indian Surveys" style="max-width:260px;"/>
+          <button class="hier-btn parse" onclick="addManualL3Block()" style="margin-top:0;">＋ Add Level 3 Value</button>
+        </div>
+
+        <div id="manualL3Container"></div>
+
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+          <button class="hier-btn parse" onclick="saveManualHierarchy()">💾 Save to Company Hierarchy</button>
+          <button class="hier-btn clear" onclick="clearManualForm()">✕ Clear Form</button>
+        </div>
+        <div class="hier-status" id="manualStatus" style="margin-top:6px;min-height:16px;font-size:12px;"></div>
+      </div>
+
+      <!-- ── Gist Sync tab ── -->
+      <div id="htabGistPanel" class="hier-tabpanel" style="display:none">
+        <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:4px;padding:8px 10px;font-size:12px;color:#555;margin-top:8px;line-height:1.6;">
+          <strong>How it works:</strong> Your hierarchy data is stored in a private GitHub Gist.
+          Create a <a href="https://github.com/settings/tokens/new?scopes=gist&description=Pipeline+Tool" target="_blank" style="color:#3498db;">GitHub PAT</a>
+          with only <code>gist</code> scope — no other permissions needed.<br>
+          <strong>Your token never leaves your browser</strong> — all requests go directly to api.github.com.
+        </div>
+        <label style="margin-top:10px;font-size:13px;">GitHub Personal Access Token (gist scope):</label>
+        <input class="hier-input" type="password" id="gistToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="width:100%;box-sizing:border-box;font-family:monospace;"/>
+        <label style="margin-top:8px;font-size:13px;">Gist ID: <span style="font-weight:normal;color:#888;">(leave blank to create a new one)</span></label>
+        <input class="hier-input" type="text" id="gistId" placeholder="e.g. a1b2c3d4e5f6... (from your Gist URL)" style="width:100%;box-sizing:border-box;font-family:monospace;"/>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+          <button class="hier-btn parse"  onclick="gistPush()">☁ Save to Gist</button>
+          <button class="hier-btn" style="background:#8e44ad;color:#fff;" onclick="gistPull()">⬇ Load from Gist</button>
+        </div>
+        <div style="font-size:11px;color:#888;margin-top:6px;">
+          After first save, copy the Gist ID shown and paste it back here for future syncs.
+        </div>
+      </div>
+
+      <!-- ── Export/Import tab ── -->
+      <div id="htabBackupPanel" class="hier-tabpanel" style="display:none">
+        <div style="font-size:12px;color:#555;margin-top:8px;margin-bottom:10px;line-height:1.6;">
+          Export saves all company hierarchy data as a JSON file you can keep as a backup or share.
+          Import merges a previously exported file back in — existing segments are never overwritten.
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="hier-btn parse" onclick="hierExportAll()">⬇ Export All Companies</button>
+          <label class="hier-btn" style="background:#27ae60;color:#fff;cursor:pointer;margin:0;">
+            📂 Import JSON
+            <input type="file" accept=".json" style="display:none" onchange="hierImportFile(this)"/>
+          </label>
+        </div>
+        <p style="font-size:11px;color:#888;margin-top:8px;">
+          💡 <strong>Tip:</strong> localStorage persists forever unless you clear browser data. Export regularly as a backup.
+        </p>
+      </div>
+
+      <!-- ── Shared status + company list ── -->
+      <div class="hier-status" id="hierStatus" style="margin-top:8px;"></div>
+      <div id="hierCompaniesList" style="margin-top:10px;"></div>
     </div>
-    <label class="switch">
-      <input type="checkbox" id="editRequestToggle" onchange="toggleEditRequest()">
-      <span class="switch-track"></span>
-    </label>
   </div>
 
-  <!-- Metadata edit count (only relevant once the Edit Request toggle is on) -->
-  <div class="metadata-count-bar" id="metadataCountBar" style="display:none;">
-    <label for="metadataCountInput">Metadata edits per asset</label>
-    <input type="number" id="metadataCountInput" min="0" value="1">
-    <div class="cutoff-hint">Number of existing associatedMetadata values to modify per asset (numeric +1, decimal +0.01, boolean toggled). Text values are always left unchanged, and no metadata entries are added or removed.</div>
-  </div>
+  <!-- MODE 1 -->
+  <div id="mode1Panel">
+    <p class="mode-desc">Upload a reference template (.xlsx), draw your pipeline on the map, and generate both the <strong>Asset Import</strong> and <strong>Inspection Import</strong> files.</p>
+    <form id="assetForm">
+      <label for="assetFile">Upload Reference File (.xlsx): <span class="help">(asset column template)</span></label>
+      <input type="file" id="assetFile" accept=".xlsx" required/>
 
-  <!-- Upload -->
-  <div id="uploadSection">
-    <div class="cutoff-bar">
-      <label for="preCutoffDateInput">Survey dates before</label>
-      <input type="date" id="preCutoffDateInput">
-      <div class="cutoff-hint">All generated measurement dates will fall strictly before this date. Leave blank to auto-use the survey's due date (or today, if none).</div>
-    </div>
-    <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-      <input type="file" id="fileInput" accept=".mtx,.json">
-      <div class="upload-icon">📂</div>
-      <h3>Drop your empty survey .mtx file</h3>
-      <p>The tool will automatically fill all measurement values,<br>dates, statuses, comments, coordinates and more.</p>
-      <span class="hint">↑ Click or drag & drop a .mtx file</span>
-    </div>
-  </div>
+      <label for="assetSpacing">Distance between assets (km): <span class="help">(min 0.1)</span></label>
+      <input type="number" id="assetSpacing" min="0.1" step="0.1" value="0.5" required inputmode="decimal" oninput="updateLiveCounter()"/>
 
-  <!-- Processing -->
-  <div id="processingSection">
-    <div class="spinner"></div>
-    <div class="processing-text" id="processingText">Auto-filling survey…</div>
-    <div class="processing-sub" id="processingSub">Generating values, calculating statuses, writing coordinates…</div>
-  </div>
+      <div style="margin-top:12px;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:13px;font-weight:bold;">Spatial Reference 2 — whole number only?</span>
+        <input type="checkbox" id="sr2IsNumber" onchange="document.getElementById('sr2Hint').textContent=this.checked?'On — whole number':'Off — ESN / decimal'"/>
+        <span id="sr2Hint" style="font-size:12px;color:#888;">Off — ESN / decimal</span>
+      </div>
 
-  <!-- Result -->
-  <div id="resultSection">
-    <div class="result-card">
-      <div class="result-header">
+      <!-- Chunk size selectors -->
+      <div style="margin-top:14px;display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end;">
         <div>
-          <div class="result-title" id="surveyTitle">—</div>
-          <div class="result-subtitle" id="surveySubtitle">—</div>
+          <label for="assetChunkSel" style="margin-top:0;font-size:13px;">Assets per file:</label>
+          <select id="assetChunkSel" style="display:block;margin-top:4px;padding:6px 10px;border:1px solid #ccc;border-radius:3px;font-size:13px;min-width:180px;">
+            <option value="0">Single file — all in one</option>
+            <option value="1000" selected>1,000 per file</option>
+            <option value="3000">3,000 per file</option>
+            <option value="5000">5,000 per file</option>
+          </select>
         </div>
-        <div class="badge-row" id="badgeRow"></div>
-      </div>
-      <div class="actions" id="actionsBar">
-        <div class="cutoff-control" id="cutoffControlWrap">
-          <label for="cutoffDateInput">Dates before</label>
-          <input type="date" id="cutoffDateInput">
+        <div>
+          <label for="inspChunkSel" style="margin-top:0;font-size:13px;">Inspection records per file:</label>
+          <select id="inspChunkSel" style="display:block;margin-top:4px;padding:6px 10px;border:1px solid #ccc;border-radius:3px;font-size:13px;min-width:200px;">
+            <option value="0">Single file — all in one</option>
+            <option value="1000">1,000 per file</option>
+            <option value="3000">3,000 per file</option>
+            <option value="10000" selected>10,000 per file</option>
+          </select>
         </div>
-        <button class="btn btn-primary" id="btnDownload" onclick="downloadOutput()">⬇ Download</button>
-        <button class="btn btn-regen" id="btnRegen" onclick="regenerate()">↺ Regenerate Random</button>
-        <button class="btn btn-allmet" id="btnAllMet" onclick="makeAllThresholdMet()">✓ Make All Threshold Met</button>
-        <button class="btn btn-secondary" id="btnReset" onclick="resetTool()">Load New File</button>
       </div>
-      <div id="assetsOutput"></div>
+
+      <button type="submit" class="btn" id="generateBtn" style="margin-top:14px;">⚙ Generate Asset &amp; Inspection Records</button>
+    </form>
+
+    <div class="map-toolbar">
+      <button class="btn" onclick="locateMe()">📍 Locate Me</button>
+      <button class="btn" onclick="startDrawingLine()">✏ Draw Pipeline</button>
+      <button class="btn red" onclick="clearAll()">🗑 Clear</button>
+      <span id="liveCounter">Draw a pipeline</span>
     </div>
+    <p class="draw-hint">Click to add waypoints · Double-click to finish drawing</p>
+    <div id="map"></div>
+  </div>
+
+  <!-- MODE 2 -->
+  <div id="mode2Panel" style="display:none">
+    <p class="mode-desc">Upload an <strong>existing asset file</strong> (.xlsx). The tool reads <em>Asset Name*</em> and <em>Segment*</em> from it and generates 10 years of inspection history.</p>
+    <form id="inspOnlyForm">
+      <label for="existingAssetFile">Upload Existing Asset File (.xlsx):</label>
+      <input type="file" id="existingAssetFile" accept=".xlsx" required/>
+      <div id="assetReadStatus" style="margin-top:6px;font-size:13px;"></div>
+      <div style="margin-top:12px;">
+        <label for="inspChunkSel2" style="margin-top:0;font-size:13px;">Inspection records per file:</label>
+        <select id="inspChunkSel2" style="display:block;margin-top:4px;padding:6px 10px;border:1px solid #ccc;border-radius:3px;font-size:13px;min-width:200px;">
+          <option value="0">Single file — all in one</option>
+          <option value="1000">1,000 per file</option>
+          <option value="3000">3,000 per file</option>
+          <option value="10000" selected>10,000 per file</option>
+        </select>
+      </div>
+      <div style="margin-top:12px;">
+        <label for="yearsSel2" style="margin-top:0;font-size:13px;">Number of years:</label>
+        <select id="yearsSel2" style="display:block;margin-top:4px;padding:6px 10px;border:1px solid #ccc;border-radius:3px;font-size:13px;min-width:200px;">
+          <option value="3">3 years</option>
+          <option value="5">5 years</option>
+          <option value="10" selected>10 years</option>
+        </select>
+      </div>
+      <button type="submit" class="btn orange" style="margin-top:14px">⚙ Generate Inspection Records</button>
+    </form>
+  </div>
+
+  <!-- Progress -->
+  <div id="progressWrap">
+    <div id="progressBar"><div id="progressFill"></div></div>
+    <div id="progressLabel">Preparing…</div>
+  </div>
+
+  <!-- Status -->
+  <div id="statusBar" class="status-bar"></div>
+
+  <!-- Tabs -->
+  <div class="tab-bar">
+    <div class="tab active" id="tabAsset"      onclick="switchTab('asset')">Asset Preview <span id="assetBadge" class="badge">–</span></div>
+    <div class="tab"        id="tabInspection" onclick="switchTab('inspection')">Inspection Preview <span id="inspBadge" class="badge">–</span></div>
+  </div>
+  <div class="tab-content">
+    <div id="panelAsset">
+      <h3>Asset File — First 10 Rows</h3>
+      <div class="preview-container"><table id="previewTable"></table></div>
+    </div>
+    <div id="panelInspection" style="display:none">
+      <h3>Inspection File — First 10 Rows</h3>
+      <div class="preview-container"><table id="previewInspTable"></table></div>
+    </div>
+  </div>
+
+  <!-- Downloads -->
+  <div id="downloadContainer" style="margin-top:12px;display:none;">
+    <div id="downloadRow" style="display:flex;flex-wrap:wrap;gap:10px;"></div>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
-
 <script>
-let surveyData = null;
-let filledData = null;
-let originalFileName = '';
-let forceThresholdMet = false;
-let currentCutoffDate = null; // Date object — all generated measurementDates will be strictly before this
-let applyEditRequest = false; // Auto Fill always runs; this is an OPTIONAL extra layer on top of it
-let lastEditedAssetNames = new Set(); // asset names touched by the edit-request layer (for UI tags)
-
-// ── Edit Request toggle (additive — Auto Fill always happens regardless) ──────
-function toggleEditRequest() {
-  applyEditRequest = document.getElementById('editRequestToggle').checked;
-  document.getElementById('metadataCountBar').style.display = applyEditRequest ? 'flex' : 'none';
-
-  updateButtonVisibility();
-
-  // If a file is already loaded, re-run processing with the new setting.
-  if (surveyData) {
-    runProcessing();
-  }
-}
-
-// Shows/hides action buttons and controls. Regenerate / Make All Threshold Met
-// stay visible always, since Auto Fill always runs regardless of the toggle.
-function updateButtonVisibility() {
-  document.getElementById('btnDownload').textContent = applyEditRequest
-    ? '⬇ Download Completed + Edit Request MTX'
-    : '⬇ Download Completed MTX';
-}
-
-// ── Drag & Drop ──────────────────────────────────────────────────────────────
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('fileInput');
-
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropZone.classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file) handleFile(file);
-});
-fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
-
-const metadataCountInputEl = document.getElementById('metadataCountInput');
-if (metadataCountInputEl) {
-  metadataCountInputEl.addEventListener('change', () => {
-    if (surveyData && applyEditRequest) runProcessing();
-  });
-}
-
-function handleFile(file) {
-  originalFileName = file.name.replace(/\.mtx$/i, '');
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      surveyData = JSON.parse(e.target.result);
-      forceThresholdMet = false;
-      currentCutoffDate = resolveInitialCutoff(surveyData);
-      runProcessing();
-    } catch {
-      showToast('Could not parse file — make sure it is a valid .mtx JSON file', 'error');
-    }
-  };
-  reader.readAsText(file);
-}
-
-// Auto Fill always runs against the original surveyData. If the Edit Request
-// toggle is on, generateEditRequest is layered on top of the auto-filled
-// result as an additional, optional pass (asset name / coordinates / a
-// configurable number of existing metadata values).
-function runProcessing() {
-  if (!surveyData) return;
-  showProcessing();
-  const procText = document.getElementById('processingText');
-  const procSub = document.getElementById('processingSub');
-  if (applyEditRequest) {
-    if (procText) procText.textContent = 'Auto-filling survey + generating edit request…';
-    if (procSub) procSub.textContent = 'Generating values, calculating statuses, then updating name/coordinates/metadata…';
-  } else {
-    if (procText) procText.textContent = 'Auto-filling survey…';
-    if (procSub) procSub.textContent = 'Generating values, calculating statuses, writing coordinates…';
-  }
-
-  setTimeout(() => {
-    if (!currentCutoffDate) currentCutoffDate = resolveInitialCutoff(surveyData);
-    let result = autoFill(surveyData, forceThresholdMet, currentCutoffDate);
-    if (applyEditRequest) {
-      result = generateEditRequest(result, getMetadataEditCount());
-    }
-    filledData = result;
-    showResult(filledData);
-  }, 900);
-}
-
-function getMetadataEditCount() {
-  const el = document.getElementById('metadataCountInput');
-  if (!el) return 1;
-  const v = parseInt(el.value, 10);
-  return (isNaN(v) || v < 0) ? 0 : v;
-}
-
-// ── Cutoff date helpers ────────────────────────────────────────────────────────
-// Decide the cutoff date to use for the very first autofill pass:
-// 1. If the user typed a date into the pre-upload field, use that.
-// 2. Otherwise fall back to the survey's dueDate (date part only).
-// 3. Otherwise fall back to today.
-function resolveInitialCutoff(data) {
-  const preInput = document.getElementById('preCutoffDateInput');
-  if (preInput && preInput.value) {
-    return dateInputValueToDate(preInput.value);
-  }
-  if (data && data.dueDate) {
-    const d = new Date(data.dueDate);
-    if (!isNaN(d.getTime())) {
-      return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-    }
-  }
-  const today = new Date();
-  return new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
-}
-
-// Parses a <input type="date"> value ("YYYY-MM-DD") as a UTC midnight Date.
-function dateInputValueToDate(value) {
-  const d = new Date(value + 'T00:00:00.000Z');
-  return isNaN(d.getTime()) ? new Date() : d;
-}
-
-// Formats a Date object back into "YYYY-MM-DD" for populating <input type="date">.
-function dateToInputValue(date) {
-  return date.toISOString().slice(0, 10);
-}
-
-// Reads whatever cutoff date is currently set in the result screen's control
-// (falls back to currentCutoffDate, then today).
-function getCutoffFromInput() {
-  const input = document.getElementById('cutoffDateInput');
-  if (input && input.value) {
-    return dateInputValueToDate(input.value);
-  }
-  return currentCutoffDate || new Date();
-}
-
-// Generates a random Date strictly before `cutoff`, spread across the
-// `daysBack` days preceding it, so measurement dates for a survey look
-// realistically staggered rather than all identical.
-function randomDateBefore(cutoff, daysBack = 90) {
-  const cutoffTime = cutoff.getTime();
-  const rangeMs = daysBack * 24 * 60 * 60 * 1000;
-  const minOffsetMs = 60 * 1000; // at least 1 minute before cutoff, guarantees strictly-before
-  const offset = minOffsetMs + Math.floor(Math.random() * Math.max(rangeMs - minOffsetMs, minOffsetMs));
-  return new Date(cutoffTime - offset);
-}
-
-// ── Auto-fill logic ───────────────────────────────────────────────────────────
-function autoFill(data, forceAllMet = false, cutoffDate = new Date()) {
-  const output = JSON.parse(JSON.stringify(data));
-
-  output.assets.forEach(asset => {
-    // Asset-level fields
-    asset.comments = randomComment();
-    asset.inRange = 1;
-    asset.inRangeValue = '';
-    asset.completed = 1;
-    asset.surveyLatitude = jitter(parseFloat(asset.latitude), 0.0005).toFixed(7);
-    asset.surveyLongitude = jitter(parseFloat(asset.longitude), 0.0005).toFixed(7);
-
-    asset.assetMeasurementCriterias.forEach(c => {
-      const val = generateValue(c, forceAllMet);
-      c.measurementValue = val;
-      c.measurementDate = randomDateBefore(cutoffDate).toISOString();
-      c.measurementStatus = computeStatus(c, val);
-    });
-  });
-
-  return output;
-}
-
-// ── Edit Request logic ────────────────────────────────────────────────────────
-// Builds an "edit request" version of the survey: existing values only are
-// modified in place (asset name, latitude/longitude, and a configurable number
-// of existing associatedMetadata values per asset). No properties are ever
-// added, removed, renamed, or reordered — the MTX schema is fully preserved.
-function generateEditRequest(data, metadataCountPerAsset = 1) {
-  const output = JSON.parse(JSON.stringify(data));
-  lastEditedAssetNames = new Set();
-
-  output.assets.forEach(asset => {
-    // IMPORTANT: this is a *change request*, not a direct edit. The real
-    // field values (assetName, locationDescription, latitude, longitude,
-    // associatedMetadata values) are left completely untouched — only the
-    // assetMetadataModification log records what change is being proposed,
-    // exactly like CorInsights does. previousValue always equals the value
-    // still sitting in the actual field; proposedValue is what would be
-    // applied if the request were approved.
-    const modificationLog = [];
-
-    // ── Asset-level proposed changes ─────────────────────────────────────────
-    if (typeof asset.assetName === 'string' && asset.assetName !== '') {
-      modificationLog.push({
-        changeType: 'asset',
-        fieldName: 'assetName',
-        previousValue: asset.assetName,
-        proposedValue: asset.assetName + '_Updated',
-        measurementSource: null,
-        measurementType: null,
-        measurementCriteriaId: null
-      });
-    }
-
-    if (typeof asset.locationDescription === 'string' && asset.locationDescription !== '') {
-      modificationLog.push({
-        changeType: 'asset',
-        fieldName: 'locationDescription',
-        previousValue: asset.locationDescription,
-        proposedValue: asset.locationDescription + '_Updated',
-        measurementSource: null,
-        measurementType: null,
-        measurementCriteriaId: null
-      });
-    }
-
-    if (typeof asset.latitude === 'string' && asset.latitude !== '') {
-      modificationLog.push({
-        changeType: 'asset',
-        fieldName: 'latitude',
-        previousValue: asset.latitude,
-        proposedValue: shiftCoordinateString(asset.latitude, 0.001),
-        measurementSource: null,
-        measurementType: null,
-        measurementCriteriaId: null
-      });
-    }
-
-    if (typeof asset.longitude === 'string' && asset.longitude !== '') {
-      modificationLog.push({
-        changeType: 'asset',
-        fieldName: 'longitude',
-        previousValue: asset.longitude,
-        proposedValue: shiftCoordinateString(asset.longitude, 0.001),
-        measurementSource: null,
-        measurementType: null,
-        measurementCriteriaId: null
-      });
-    }
-
-    // ── Measurement-level proposed changes (associatedMetadata) ─────────────
-    // Only EXISTING metadata entries are ever referenced — nothing is added,
-    // removed, or renamed, and the actual m.value is never mutated.
-    let modifiedCount = 0;
-    if (metadataCountPerAsset > 0 && Array.isArray(asset.assetMeasurementCriterias)) {
-      asset.assetMeasurementCriterias.forEach(c => {
-        if (modifiedCount >= metadataCountPerAsset) return;
-        if (!Array.isArray(c.associatedMetadata)) return;
-        c.associatedMetadata.forEach(m => {
-          if (modifiedCount >= metadataCountPerAsset) return;
-          if (!m || typeof m !== 'object' || !('value' in m)) return;
-          const result = modifyMetadataValue(m.value);
-          if (result.changed) {
-            modifiedCount++;
-            modificationLog.push({
-              changeType: 'measurement',
-              fieldName: m.key,
-              previousValue: m.value,
-              proposedValue: result.value,
-              measurementSource: c.measurementSource,
-              measurementType: c.measurementType,
-              measurementCriteriaId: c.assetMeasurementCriteriaId
-            });
-          }
-          // Text / unsupported values are safely skipped and left unchanged.
-        });
-      });
-    }
-
-    // The assetMetadataModification array is created if it isn't already
-    // present — CorInsights itself only adds this field once a change
-    // request exists, so a blank/never-edited survey won't have it yet.
-    asset.assetMetadataModification = modificationLog;
-
-    if (modificationLog.length > 0) {
-      lastEditedAssetNames.add(asset.assetName);
-    }
-  });
-
-  return output;
-}
-
-// Adds `delta` to a numeric-string coordinate while preserving its original
-// decimal precision and its type as a string (schema requirement).
-// e.g. shiftCoordinateString("18.520430", 0.001) -> "18.521430"
-function shiftCoordinateString(strVal, delta) {
-  const num = parseFloat(strVal);
-  if (isNaN(num)) return strVal;
-  const decimalPart = strVal.split('.')[1];
-  const decimals = decimalPart ? decimalPart.length : 6;
-  return (num + delta).toFixed(decimals);
-}
-
-// Applies the Edit Request value-modification rules to a single metadata value:
-//   - Numeric string  ("25")    -> increment by 1            ("26")
-//   - Decimal string  ("1.25")  -> increment smallest place   ("1.26")
-//   - Boolean         (true)    -> toggled                    (false)
-//   - Boolean-like str ("true") -> toggled                    ("false")
-//   - Text / anything else -> left unchanged (skipped)
-// Returns { changed, value }.
-function modifyMetadataValue(value) {
-  if (typeof value === 'boolean') {
-    return { changed: true, value: !value };
-  }
-
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-
-    // Boolean-like text
-    if (trimmed.toLowerCase() === 'true') return { changed: true, value: 'false' };
-    if (trimmed.toLowerCase() === 'false') return { changed: true, value: 'true' };
-
-    // Decimal numeric string, e.g. "1.25" -> "1.26", "-0.839" -> "-0.829", "0.1" -> "0.11"
-    // Rule (verified against real CorInsights output): always add a flat 0.01,
-    // formatted to max(original decimal places, 2).
-    if (/^-?\d+\.\d+$/.test(trimmed)) {
-      const originalDecimals = trimmed.split('.')[1].length;
-      const outDecimals = Math.max(originalDecimals, 2);
-      const incremented = parseFloat(trimmed) + 0.01;
-      return { changed: true, value: incremented.toFixed(outDecimals) };
-    }
-
-    // Plain integer numeric string, e.g. "25"
-    if (/^-?\d+$/.test(trimmed)) {
-      const incremented = parseInt(trimmed, 10) + 1;
-      return { changed: true, value: String(incremented) };
-    }
-
-    // Plain numeric type stored as number-like (defensive, unlikely for this schema)
-    return { changed: false, value: value };
-  }
-
-  if (typeof value === 'number') {
-    return { changed: true, value: Number.isInteger(value) ? value + 1 : parseFloat((value + 0.01).toFixed(2)) };
-  }
-
-  // Unsupported type — leave untouched
-  return { changed: false, value: value };
-}
-
-// Parse operator + numeric threshold out of a criteria string.
-// Handles symbol-based:  ">200 mV Shift", ">-0.85 V"
-// Handles text-based:    "More negative than -850 mV", "more positive than -5.2 V"
-// Returns { op, threshold, unitInCriteria } where unitInCriteria is 'mV' or 'V' or null
-function parseCriteriaString(criteria) {
-  if (!criteria) return null;
-  const s = criteria.trim();
-
-  // Text-based: "more negative than X [unit]" / "more positive than X [unit]" / "equals X [unit]"
-  const textMatch = s.match(/^(more negative than|more positive than|equals and more positive than|equals)\s+(-?[\d.]+)\s*(mV|V|A|mA)?/i);
-  if (textMatch) {
-    const opRaw = textMatch[1].toLowerCase();
-    const threshold = parseFloat(textMatch[2]);
-    const unitInCriteria = textMatch[3] || null;
-    let op;
-    if (opRaw === 'more negative than') op = '<';
-    else if (opRaw === 'more positive than') op = '>';
-    else if (opRaw === 'equals and more positive than') op = '>=';
-    else op = '==';
-    return { op, threshold, unitInCriteria };
-  }
-
-  // Symbol-based: ">200 mV Shift", ">-0.85 V", "<= -1.5 A"
-  const symMatch = s.match(/^(>=|<=|>|<|=)\s*(-?[\d.]+)\s*(mV|V|A|mA)?/);
-  if (!symMatch) return null;
-  return { op: symMatch[1], threshold: parseFloat(symMatch[2]), unitInCriteria: symMatch[3] || null };
-}
-
-// Detect P/S OFF DC mV-shift criteria: ">100 mV Shift", ">200 mV Shift", ">300 mV Shift"
-// Returns the shift in Volts (e.g. ">200 mV Shift" → 0.200), or null if not a mV-shift criteria
-function parseMvShift(criteria) {
-  if (!criteria) return null;
-  const match = criteria.match(/^>\s*(\d+)\s*mV\s*[Ss]hift/i);
-  if (!match) return null;
-  return parseFloat(match[1]) / 1000; // convert mV → V
-}
-
-// Get Effective Native (Depol) value from associatedMetadata
-function getDepolValue(c) {
-  if (!c.associatedMetadata || !Array.isArray(c.associatedMetadata)) return null;
-  const entry = c.associatedMetadata.find(m =>
-    m.key && m.key.toLowerCase().includes('depol')
-  );
-  if (!entry) return null;
-  return parseFloat(entry.value); // always in V
-}
-
-// ── Core value generator ──────────────────────────────────────────────────────
-function generateValue(c, forceAllMet = false) {
-  const unit = (c.unit || '').toLowerCase();
-  const type = (c.measurementType || '').toLowerCase();
-  const shouldMeet = forceAllMet ? true : Math.random() < 0.7;
-
-  // ── Special case: P/S OFF DC with mV-shift criteria + depol ─────────────────
-  // Rule: threshold met = value < (depol - shiftInVolts)
-  // Value is a float (Volts), NOT an integer
-  if (c.measurementType === 'P/S OFF DC') {
-    const shiftV = parseMvShift(c.criteria);
-    const depol = getDepolValue(c);
-
-    if (shiftV !== null && depol !== null) {
-      // Required threshold = depol - shiftV  (e.g. -0.65 - 0.200 = -0.850)
-      const requiredThreshold = depol - shiftV;
-      const spread = 0.05 + Math.random() * 0.10; // 50–150 mV away
-      if (shouldMeet) {
-        // value must be < requiredThreshold  (more negative)
-        const val = requiredThreshold - spread;
-        return parseFloat(val.toFixed(3));
-      } else {
-        // value is above requiredThreshold (not negative enough)
-        const val = requiredThreshold + spread;
-        return parseFloat(val.toFixed(3));
-      }
-    }
-
-    // P/S OFF DC but criteria is NOT an mV-shift (e.g. "more negative than -850 mV")
-    // Fall through to normal threshold logic below — treat as regular criteria
-  }
-
-  // ── Normal threshold + operator logic ────────────────────────────────────────
-  let threshold = (c.threshold != null && c.threshold !== '' && c.threshold !== 'null')
-    ? parseFloat(c.threshold) : null;
-  let operator = (c.measurementOperator || '').toLowerCase().trim();
-
-  // Fall back to parsing from criteria string
-  if ((threshold === null || !operator) && c.criteria) {
-    const parsed = parseCriteriaString(c.criteria);
-    if (parsed) {
-      if (threshold === null) {
-        threshold = parsed.threshold;
-        // Convert mV → V if criteria unit is mV but field unit is V
-        if (unit === 'v' && parsed.unitInCriteria && parsed.unitInCriteria.toLowerCase() === 'mv') {
-          threshold = threshold / 1000;
-        }
-      }
-      if (!operator) operator = parsed.op;
-    }
-  }
-
-  // Also normalise text operators that come from the measurementOperator field
-  if (operator === 'equals') operator = '==';
-  if (operator === 'equals and more positive than') operator = '>=';
-
-  let min, max;
-
-  if (threshold !== null && operator) {
-    const isPositive = operator.includes('more positive') || operator.includes('greater') || operator === '>';
-    const isNonNegative = operator === '>=' || operator === 'greater than or equal to';
-    const isNegative = operator.includes('more negative') || operator.includes('less') || operator === '<';
-    const isNonPositive = operator === '<=' || operator === 'less than or equal to';
-    const isEqual = operator === '==' || operator === '=' || operator === 'equal to';
-
-    const spread = Math.max(5, Math.abs(threshold) * 0.3 + 3);
-
-    if (isPositive) {
-      if (shouldMeet) { min = threshold + 1; max = threshold + spread + 5; }
-      else { min = threshold - spread; max = threshold - 1; }
-    } else if (isNonNegative) {
-      if (shouldMeet) { min = threshold; max = threshold + spread + 5; }
-      else { min = threshold - spread; max = threshold - 1; }
-    } else if (isNegative) {
-      if (shouldMeet) { min = threshold - spread - 5; max = threshold - 1; }
-      else { min = threshold + 1; max = threshold + spread + 5; }
-    } else if (isNonPositive) {
-      if (shouldMeet) { min = threshold - spread - 5; max = threshold; }
-      else { min = threshold + 1; max = threshold + spread + 5; }
-    } else if (isEqual) {
-      // For equals: value = Math.round(threshold) which satisfies integer equality
-      if (shouldMeet) { min = Math.round(threshold); max = Math.round(threshold); }
-      else {
-        const offset = Math.random() < 0.5 ? 1 : -1;
-        min = Math.round(threshold) + offset; max = min + Math.floor(spread);
-      }
-    } else {
-      min = threshold - 5; max = threshold + 5;
-    }
-    if (min > max) { const t = min; min = max; max = t; }
-    return Math.round(randInt(Math.ceil(min), Math.floor(max)));
-  }
-
-  // No threshold/operator at all — fallback by unit/type
-  if (unit === 'v') { min = 1; max = 50; }
-  else if (unit === 'a') { min = 1; max = 30; }
-  else if (unit === 'ma') { min = 10; max = 500; }
-  else if (unit === 'mv') { min = 100; max = 900; }
-  else if (unit === 'ω' || unit === 'ohm') { min = 1; max = 200; }
-  else { min = 1; max = 100; }
-
-  if (type.includes('voltage') || type.includes('potential')) { min = 1; max = 60; }
-  if (type.includes('current')) { min = 1; max = 20; }
-  if (type.includes('resistance')) { min = 1; max = 150; }
-
-  return randInt(min, max);
-}
-
-function computeStatus(c, val) {
-  // ── Special case: P/S OFF DC with mV-shift criteria ──────────────────────────
-  if (c.measurementType === 'P/S OFF DC') {
-    const shiftV = parseMvShift(c.criteria);
-    const depol = getDepolValue(c);
-    if (shiftV !== null && depol !== null) {
-      const requiredThreshold = depol - shiftV;
-      return val < requiredThreshold ? 'Threshold Met' : 'Threshold Not Met';
-    }
-    // Fall through to normal logic if not mV-shift
-  }
-
-  // ── Normal logic ─────────────────────────────────────────────────────────────
-  let threshold = (c.threshold != null && c.threshold !== '' && c.threshold !== 'null')
-    ? parseFloat(c.threshold) : null;
-  let op = (c.measurementOperator && c.measurementOperator !== 'null')
-    ? c.measurementOperator.toLowerCase().trim() : '';
-
-  if ((threshold === null || !op) && c.criteria) {
-    const parsed = parseCriteriaString(c.criteria);
-    if (parsed) {
-      if (threshold === null) {
-        threshold = parsed.threshold;
-        if ((c.unit || '').toLowerCase() === 'v' && parsed.unitInCriteria && parsed.unitInCriteria.toLowerCase() === 'mv') {
-          threshold = threshold / 1000;
-        }
-      }
-      if (!op) op = parsed.op;
-    }
-  }
-
-  // Normalise text operators from measurementOperator field
-  if (op === 'equals') op = '==';
-  if (op === 'equals and more positive than') op = '>=';
-
-  if (threshold === null || !op) return '';
-
-  let met;
-  if (op.includes('more positive') || op === 'greater than' || op === '>') met = val > threshold;
-  else if (op.includes('more negative') || op === 'less than' || op === '<') met = val < threshold;
-  else if (op === '>=' || op === 'greater than or equal to') met = val >= threshold;
-  else if (op === '<=' || op === 'less than or equal to') met = val <= threshold;
-  else if (op === '==' || op === '=' || op === 'equal to') met = val === Math.round(threshold);
-  else return '';
-
-  return met ? 'Threshold Met' : 'Threshold Not Met';
-}
-
-// ── Render result ─────────────────────────────────────────────────────────────
-function showResult(data) {
-  document.getElementById('processingSection').style.display = 'none';
-  document.getElementById('resultSection').style.display = 'block';
-
-  document.getElementById('surveyTitle').textContent = data.surveyName;
-  document.getElementById('surveySubtitle').textContent =
-    `${data.surveyFrequencyType} · ${data.dataCollectionType} · Assigned to ${data.assignedTo}`;
-
-  updateButtonVisibility();
-
-  // Badges
-  const totalCriteria = data.assets.reduce((s, a) => s + a.assetMeasurementCriterias.length, 0);
-  const metCount = data.assets.reduce((s, a) =>
-    s + a.assetMeasurementCriterias.filter(c => c.measurementStatus === 'Threshold Met').length, 0);
-  const notMetCount = data.assets.reduce((s, a) =>
-    s + a.assetMeasurementCriterias.filter(c => c.measurementStatus === 'Threshold Not Met').length, 0);
-
-  if (applyEditRequest) {
-    document.getElementById('badgeRow').innerHTML = `
-      <span class="badge badge-edit">✎ + Edit Request</span>
-      <span class="badge badge-blue">${data.assets.length} Asset${data.assets.length !== 1 ? 's' : ''}</span>
-      <span class="badge badge-blue">${totalCriteria} Criteria</span>
-      ${metCount > 0 ? `<span class="badge badge-green">✓ ${metCount} Met</span>` : ''}
-      ${notMetCount > 0 ? `<span class="badge" style="background:rgba(255,77,109,0.1);color:#ff4d6d;border:1px solid rgba(255,77,109,0.3)">✗ ${notMetCount} Not Met</span>` : ''}
-    `;
-  } else {
-    document.getElementById('badgeRow').innerHTML = `
-      <span class="badge badge-blue">${data.assets.length} Asset${data.assets.length !== 1 ? 's' : ''}</span>
-      <span class="badge badge-blue">${totalCriteria} Criteria</span>
-      ${metCount > 0 ? `<span class="badge badge-green">✓ ${metCount} Met</span>` : ''}
-      ${notMetCount > 0 ? `<span class="badge" style="background:rgba(255,77,109,0.1);color:#ff4d6d;border:1px solid rgba(255,77,109,0.3)">✗ ${notMetCount} Not Met</span>` : ''}
-    `;
-  }
-
-  // Keep the cutoff-date control on the result screen in sync with whatever cutoff was just used
-  const cutoffInput = document.getElementById('cutoffDateInput');
-  if (cutoffInput && currentCutoffDate) {
-    cutoffInput.value = dateToInputValue(currentCutoffDate);
-  }
-
-  // Assets
-  const container = document.getElementById('assetsOutput');
-  container.innerHTML = '';
-
-  data.assets.forEach(asset => {
-    const div = document.createElement('div');
-    div.className = 'asset-summary';
-    const editOn = applyEditRequest;
-    const modLog = (editOn && Array.isArray(asset.assetMetadataModification)) ? asset.assetMetadataModification : [];
-    div.innerHTML = `
-      <div class="asset-name-row">
-        <span class="asset-label">${asset.assetName}</span>
-        ${modLog.length > 0 ? '<span class="edited-tag">Edit Requested</span>' : ''}
-        <span class="asset-type-tag">${asset.assetType}</span>
-      </div>
-      <div class="kv-grid">
-        <div class="kv-item"><div class="kv-label">Comments</div><div class="kv-value">${asset.comments}</div></div>
-        <div class="kv-item"><div class="kv-label">inRange</div><div class="kv-value">${asset.inRange}</div></div>
-        <div class="kv-item"><div class="kv-label">Completed</div><div class="kv-value">${asset.completed}</div></div>
-        <div class="kv-item"><div class="kv-label">Survey Latitude</div><div class="kv-value">${asset.surveyLatitude}</div></div>
-        <div class="kv-item"><div class="kv-label">Survey Longitude</div><div class="kv-value">${asset.surveyLongitude}</div></div>
-      </div>
-      ${modLog.length > 0 ? `
-      <div class="mod-log">
-        <div class="mod-log-title">assetMetadataModification (${modLog.length}) — requested, not yet applied</div>
-        ${modLog.map(entry => `
-          <div class="mod-log-row">
-            <span class="mod-log-field">${entry.fieldName}</span>
-            <span class="mod-log-arrow">${entry.previousValue} → <strong>${entry.proposedValue}</strong></span>
-            ${entry.measurementType ? `<span class="tag">${entry.measurementType} · ${entry.measurementSource}</span>` : ''}
-          </div>
-        `).join('')}
-      </div>` : ''}
-      <div class="criteria-list">
-        ${asset.assetMeasurementCriterias.map(c => renderCriteriaCard(c, editOn)).join('')}
-      </div>
-    `;
-    container.appendChild(div);
-  });
-}
-
-function renderCriteriaCard(c, isEditMode = false) {
-  const hasThreshold = c.threshold != null && c.threshold !== '' && c.threshold !== 'null';
-  const hasCriteria = c.criteria != null && c.criteria !== '' && c.criteria !== 'null';
-
-  // Build extra depol tag for P/S OFF DC mV-shift
-  let depolTag = '';
-  if (c.measurementType === 'P/S OFF DC') {
-    const shiftV = parseMvShift(c.criteria);
-    const depol = getDepolValue(c);
-    if (shiftV !== null && depol !== null) {
-      const req = (depol - shiftV).toFixed(3);
-      depolTag = `<span class="tag tag-depol">Depol: ${depol}V → must be &lt; ${req}V</span>`;
-    }
-  }
-
-  // In Edit Request mode, surface associatedMetadata values (some may have just been modified)
-  let metadataTags = '';
-  if (isEditMode && Array.isArray(c.associatedMetadata) && c.associatedMetadata.length > 0) {
-    metadataTags = c.associatedMetadata.map(m =>
-      `<span class="tag tag-depol">${m.key}: ${m.value}${m.unit ? ' ' + m.unit : ''}</span>`
-    ).join('');
-  }
-
-  let statusClass = 'status-na', statusText = '— No Status';
-  if (c.measurementStatus === 'Threshold Met') { statusClass = 'status-met'; statusText = '✓ Threshold Met'; }
-  else if (c.measurementStatus === 'Threshold Not Met') { statusClass = 'status-not-met'; statusText = '✗ Not Met'; }
-
-  const dateStr = c.measurementDate ? new Date(c.measurementDate).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
-
-  return `
-    <div class="criteria-card">
-      <div class="criteria-left">
-        <div class="criteria-type-name">${c.measurementType}</div>
-        <div class="criteria-tags">
-          <span class="tag">${c.measurementSource} · ${c.unit} · ${c.acDcValue}</span>
-          ${hasThreshold ? `<span class="tag tag-threshold">Threshold: ${c.threshold} ${c.unit} (${c.measurementOperator})</span>` : ''}
-          ${hasCriteria ? `<span class="tag tag-criteria">Criteria: ${c.criteria}</span>` : ''}
-          ${depolTag}
-          ${metadataTags}
-          <span class="tag tag-value">Value: ${c.measurementValue} ${c.unit}</span>
-        </div>
-      </div>
-      <div class="criteria-right">
-        <div class="meas-value">${c.measurementValue} <span style="font-size:13px;color:var(--muted);font-family:var(--mono)">${c.unit}</span></div>
-        <div class="meas-date">${dateStr}</div>
-        <span class="status-pill ${statusClass}">${statusText}</span>
-      </div>
-    </div>
-  `;
-}
-
-// ── Download ──────────────────────────────────────────────────────────────────
-function downloadOutput() {
-  if (!filledData) return;
-  const blob = new Blob([JSON.stringify(filledData, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const suffix = applyEditRequest ? '_completed_edits_requested' : '_completed';
-  a.href = url;
-  a.download = `${originalFileName}${suffix}.mtx`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast((applyEditRequest ? 'Completed + edit request' : 'Completed') + ' MTX file downloaded!', 'success');
-}
-
-function regenerate() {
-  if (!surveyData) return;
-  currentCutoffDate = getCutoffFromInput();
-  showProcessing();
-  setTimeout(() => {
-    let result = autoFill(surveyData, forceThresholdMet, currentCutoffDate);
-    if (applyEditRequest) result = generateEditRequest(result, getMetadataEditCount());
-    filledData = result;
-    showResult(filledData);
-    showToast(forceThresholdMet ? 'All thresholds met — values regenerated!' : 'New random values generated!', 'success');
-  }, 700);
-}
-
-function makeAllThresholdMet() {
-  if (!surveyData) return;
-  forceThresholdMet = true;
-  currentCutoffDate = getCutoffFromInput();
-  showProcessing();
-  setTimeout(() => {
-    let result = autoFill(surveyData, true, currentCutoffDate);
-    if (applyEditRequest) result = generateEditRequest(result, getMetadataEditCount());
-    filledData = result;
-    showResult(filledData);
-    showToast('All thresholds forced to Met!', 'success');
-  }, 700);
-}
-
-function resetTool() {
-  surveyData = null;
-  filledData = null;
-  currentCutoffDate = null;
-  forceThresholdMet = false;
-  lastEditedAssetNames = new Set();
-  document.getElementById('uploadSection').style.display = 'block';
-  document.getElementById('processingSection').style.display = 'none';
-  document.getElementById('resultSection').style.display = 'none';
-  document.getElementById('fileInput').value = '';
-}
-
-function showProcessing() {
-  document.getElementById('uploadSection').style.display = 'none';
-  document.getElementById('resultSection').style.display = 'none';
-  document.getElementById('processingSection').style.display = 'block';
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function randInt(min, max) {
-  // Works correctly for negative numbers too
-  min = Math.ceil(min); max = Math.floor(max);
-  if (min > max) { const t = min; min = max; max = t; }
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
-
-function jitter(val, amount) {
-  return val + (Math.random() * 2 - 1) * amount;
-}
-
-const COMMENTS = [
-  'Annual inspection completed. All readings recorded successfully.',
-  'Routine survey completed. Site conditions found normal.',
-  'Inspection done. Cathodic protection system appears functional.',
-  'All measurements captured. No anomalies observed during inspection.',
-  'Survey completed as scheduled. Equipment in good working condition.',
-  'Readings recorded on site. Environment dry and clear.',
-  'Inspection completed. Minor surface oxidation noted — no structural concern.',
-  'Annual inspection done. All access points clear and accessible.',
-  'Survey completed successfully. System operating within expected parameters.',
-  'All measurement points surveyed. Site access was satisfactory.',
+'use strict';
+
+/* ═══════════════════════════════════════════════════
+   CONSTANTS & HELPERS
+═══════════════════════════════════════════════════ */
+const DIRECTIONS   = ["North-east","North-west","South-east","South-west","Central","Upper","Lower","Left wing","Right wing","Front side"];
+const AREAS        = ["of the plant","of the control room","near the generator","next to the fuel tank","adjacent to the pump room","under the main deck","beside the storage tank","inside the inspection zone","on top of the maintenance bay","at the entrance gate"];
+const CRITERIA_SEQ = [">100 mV shift",">300 mV shift","More negative than -850 mV"];
+const TECH_NAMES   = ["J. Martinez","R. Patel","S. Thompson","A. Nguyen","D. Williams","K. O'Brien","M. Singh","T. Kowalski","L. Chen","B. Ferreira"];
+const SURVEY_PFX   = ["Annual-CP","Routine-CP","Close-Interval","Half-Cell","Seasonal-CP","Compliance-CP"];
+const ALPHA_WORDS  = ["Alpha","Beta","Gamma","Delta","Omega","Sigma","Kappa","Theta","Lambda","Zeta"];
+const SR3_ABC      = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+const OPERATORS     = ["equals","more negative than","more positive than","greater than","less than","equals and more positive than","equals and more negative than"];
+// P/S OFF DC uses standard operators for random pick; polarization shift is assigned exclusively via polShiftCols
+const OFFDC_OPERATORS = [...OPERATORS]; // polarization shift added separately — never via random pick
+// When polarization shift is chosen, threshold must be one of these specific values (V)
+const POLSHIFT_THRESHOLDS = [0.1, 0.2, 0.3, -0.850];
+
+const ASSET_COMMENT_TPLS = [
+  (s,n,l)=>`Asset ${n} in segment ${s} located ${l}. CP readings nominal.`,
+  (s,n,l)=>`Cathodic protection unit ${n} — ${l}. Segment ${s} — no anomalies detected.`,
+  (s,n,l)=>`Field asset ${n}. Location: ${l}. Segment: ${s}. Routine monitoring point.`,
+  (s,n,l)=>`${n} (${s}) at ${l}. Asset functioning within design parameters.`,
+  (s,n,l)=>`Monitoring asset ${n} positioned ${l}. Segment ${s}. CP protection confirmed.`,
+];
+const INSP_COMMENT_NOTES = [
+  (s,n,y)=>`Annual CP survey ${y}. Asset ${n} (${s}) inspected. Readings within acceptable limits.`,
+  (s,n,y)=>`Scheduled inspection ${y}. Segment ${s} — ${n} shows normal cathodic protection levels.`,
+  (s,n,y)=>`CP monitoring ${y}. Asset ${n} checked in segment ${s}. No anomalies recorded.`,
+  (s,n,y)=>`Annual survey ${y}. ${n} in ${s} — protection levels satisfactory. Next inspection in 12 months.`,
 ];
 
-function randomComment() {
-  return COMMENTS[Math.floor(Math.random() * COMMENTS.length)];
+function rand(a,b)    { return Math.random()*(b-a)+a; }
+function randInt(a,b) { return Math.floor(rand(a,b+0.9999)); }
+function pick(arr)    { return arr[randInt(0,arr.length-1)]; }
+function fmt2(n)      { return String(n).padStart(2,'0'); }
+function fmt3(n)      { return String(n).padStart(3,'0'); }
+
+function formatDate(d) {
+  return `${d.getFullYear()}-${fmt2(d.getMonth()+1)}-${fmt2(d.getDate())}`;
+}
+function addDays(d,n)   { const r=new Date(d); r.setDate(r.getDate()+n); return r; }
+function addMonths(d,n) { const r=new Date(d); r.setMonth(r.getMonth()+n); return r; }
+
+function getLocation()  { return `${pick(DIRECTIONS)} ${pick(AREAS)}`; }
+
+function generateAssetName(prefix, date, idx) {
+  return `${prefix}-${fmt2(date.getMonth()+1)}/${fmt2(date.getDate())}-${String(idx+1).padStart(4,'0')}`;
 }
 
-function showToast(msg, type = 'success') {
-  const t = document.getElementById('toast');
-  t.textContent = (type === 'success' ? '✓ ' : '✗ ') + msg;
-  t.className = `toast ${type} show`;
-  setTimeout(() => t.classList.remove('show'), 3500);
+function generateFacilityShot() {
+  const p=[], n=randInt(1,3);
+  for(let i=0;i<n;i++){
+    if(i%2===0){let s='',l=randInt(2,4);for(let j=0;j<l;j++)s+=String.fromCharCode(65+randInt(0,25));p.push(s);}
+    else p.push(String(randInt(1,99)));
+  }
+  return p.join(' ');
 }
+function generateAlphanumericName() { return `${pick(ALPHA_WORDS)} ${randInt(1,99)}`; }
+function generateSR3() {
+  return `${SR3_ABC[randInt(0,SR3_ABC.length-1)]}${SR3_ABC[randInt(0,SR3_ABC.length-1)]}-${randInt(100,9999)}`;
+}
+
+/* ── Spatial Reference value by unit ── */
+function generateSpatialRef(colName, idx, spacingKm) {
+  if (/\(m\)/i.test(colName)) {
+    const distM = idx * spacingKm * 1000;
+    return `${Math.floor(distM/1000)}+${fmt3(Math.round(distM%1000))}`;
+  }
+  if (/\(ft\)/i.test(colName)) {
+    const distFt = idx * spacingKm * 3280.84;
+    return `${Math.floor(distFt/100)}+${String(Math.round(distFt%100)).padStart(2,'0')}`;
+  }
+  if (/\(km\)/i.test(colName)) {
+    const v = idx * spacingKm;
+        return v===0 ? '0' : v.toFixed(3);
+  }
+  if (/\(mi\)/i.test(colName)) {
+    const v = idx * spacingKm * 0.621371;
+    return v===0 ? '0' : v.toFixed(3);
+  }
+  return (idx * spacingKm).toFixed(3);
+}
+
+/* ── Comments ── */
+function generateAssetComment(seg, name) {
+  const t = ASSET_COMMENT_TPLS[randInt(0,ASSET_COMMENT_TPLS.length-1)];
+  return t(seg, name, getLocation());
+}
+function generateInspComment(seg, name, year, isLatest, pass=true) {
+  if (!pass) {
+    const failNotes = [
+      `CP inspection ${year}. Asset ${name} (${seg}) — one or more readings outside threshold. Flagged for review.`,
+      `Annual survey ${year}. Segment ${seg} — ${name} recorded readings in exception status. Corrective action may be required.`,
+      `${name} in ${seg} — ${year} inspection identified threshold exceedance. Asset added to exception list.`,
+      `CP monitoring ${year}. ${name} (${seg}) — protection levels below acceptable criterion. Engineering review recommended.`,
+    ];
+    return pick(failNotes);
+  }
+  if (isLatest) return `Latest annual survey ${year}. Asset ${name} in segment ${seg} — all CP readings within specification. No corrective action required.`;
+  const t = INSP_COMMENT_NOTES[randInt(0,INSP_COMMENT_NOTES.length-1)];
+  return t(seg, name, year);
+}
+
+/* ── Survey dates: 10 years, oldest→newest ── */
+/* Month names for segment labels */
+const MONTH_NAMES = ["January","February","March","April","May","June",
+  "July","August","September","October","November","December"];
+
+function buildSurveyDates(numYears) {
+  // Each year is fixed (current year going back numYears), but month and day are random per year
+  const today      = new Date();
+  const latestYear = today.getFullYear() - 1;
+  return Array.from({length: numYears}, (_, i) => {
+    const year  = latestYear - (numYears - 1 - i);
+    const month = randInt(0, 11);           // random month 0-11
+    const maxDay = new Date(year, month+1, 0).getDate();
+    const day   = randInt(1, maxDay);       // random valid day for that month
+    return new Date(year, month, day);
+  });
+}
+
+/* ═══════════════════════════════════════════════════
+   INSPECTION COLUMNS
+═══════════════════════════════════════════════════ */
+const INSP_MEAS = [
+  "Primary P/S ON AC (V)","Primary P/S ON DC (V)","Primary P/S OFF DC (V)",
+  "Primary Output Current (A)","Primary Output Voltage (V)",
+  "Casing Output Voltage Left (V)","Casing Output Voltage Found (V)",
+  "Foreign Output Current Found (A)","Foreign Output Current Left (A)",
+  "Casing AC Current Density (A/m²)","Casing DC Current Density (A/m²)",
+  "Casing to P/S Delta OFF (V)","Casing to P/S Delta ON (V)",
+  "Casing P/S ON DC (V)","Casing P/S OFF DC (V)","Casing Output Current Found (A)",
+  "Primary Output Voltage Left (V)","Soil Pole Soil Resistivity (ohm-meters)",
+  "OFF DC P/S OFF DC (V)","Casing Soil Resistivity (ohm-meters)",
+  "Foreign P/S OFF DC (V)","Casing P/S ON AC (V)",
+  "Foreign Output Voltage Found (V)","Foreign Output Voltage Left (V)",
+  "Casing Output Current Left (A)","Casing AC Current (A)","Casing DC Current (A)",
+  "Foreign AC Current Density (A/m²)","Foreign DC Current Density (A/m²)",
+  "Soil Bar Soil Resistivity (ohm-meters)","Foreign P/S ON DC (V)"
+];
+const INSP_HEADER = ["Segment*","Asset Name*",...INSP_MEAS,"Date of Inspection*","Survey Name*","Technician","Comments"];
+
+/* ═══════════════════════════════════════════════════
+   COUPON SIZES — NACE RP0104 / AMPP standard sizes
+   Stored as cm² in the Coupon Size column.
+   Internal area in m² used to derive current density.
+   Pick one size per asset and keep it consistent.
+═══════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════
+   COUPON & SHUNT STANDARDS — NACE RP0104 / AMPP
+   ─────────────────────────────────────────────────
+   Coupon Size: area of the coupon exposed to soil (cm²)
+   Shunt Factor (SF): conductance of the portable shunt (A/V)
+     SF = 1/R  where R is shunt resistance in ohms
+     Common field shunts: 100Ω→SF=0.01, 10Ω→SF=0.1, 1Ω→SF=1.0
+   Formula: Current (A) = V_shunt (V) × SF
+            Current Density (A/m²) = Current / Coupon Area (m²)
+═══════════════════════════════════════════════════ */
+const COUPON_SIZES_CM2 = [6.45, 25, 100];            // 1 in², 25 cm², 100 cm²
+const COUPON_SIZES_M2  = COUPON_SIZES_CM2.map(s => s / 10000);
+
+// Standard portable shunt factors (A/V) used in CP field work
+// Higher SF = lower resistance shunt = measures larger currents
+const SHUNT_FACTORS_AV = [0.01, 0.1, 1.0];           // 100Ω, 10Ω, 1Ω shunts
+
+/* generateAssetMeta — called ONCE per asset during asset creation.
+   Returns the fixed physical properties of the coupon/shunt.
+   These go into the ASSET FILE and are reused for every inspection. */
+function generateAssetMeta() {
+  const sizeIdx   = randInt(0, COUPON_SIZES_CM2.length - 1);
+  const sfIdx     = randInt(0, SHUNT_FACTORS_AV.length - 1);
+  return {
+    couponCm2   : COUPON_SIZES_CM2[sizeIdx],   // stored in asset file
+    couponM2    : COUPON_SIZES_M2[sizeIdx],    // internal use only
+    shuntFactor : SHUNT_FACTORS_AV[sfIdx],     // stored in asset file
+  };
+}
+
+/* generateCPReadings — called ONCE per inspection row (per asset per survey).
+   Accepts the asset's fixed meta (couponM2, shuntFactor) so that
+   current density is always derived correctly from those values.
+   Formula: density = (V_shunt × shuntFactor) / couponM2            */
+function generateCPReadings(couponM2, shuntFactor, passCriteria=true) {
+  // Use defaults if called without asset meta (e.g. Mode 2 without meta columns)
+  if (!couponM2)    couponM2    = COUPON_SIZES_M2[1];   // default 25 cm²
+  if (!shuntFactor) shuntFactor = SHUNT_FACTORS_AV[1];  // default 0.1 A/V (10Ω)
+
+  // ── Helper: derive density from a generated shunt voltage ──
+  function densityFromVoltage(vMin=0.0001, vMax=0.1) {
+    const vShunt  = rand(vMin, vMax);
+    const current = vShunt * shuntFactor;
+    const density = current / couponM2;
+    return { vShunt, current, density };
+  }
+
+  // ── Primary pipeline potentials (vs CSE) — NACE SP0169 ──
+  // passCriteria=true  → readings within protection limits (OFF DC ≤ -0.85 V)
+  // passCriteria=false → at least one reading deliberately outside limits (exception)
+  let primaryOffDC, primaryOnDC, primaryOnAC;
+  if (passCriteria) {
+    // PASS: fully protected — OFF DC well below -0.85 V
+    primaryOffDC = rand(-1.20, -0.86);
+    primaryOnDC  = primaryOffDC - rand(0.05, 0.25);
+    primaryOnAC  = rand(0.0, 3.0);
+  } else {
+    // FAIL: under-protected — OFF DC above -0.85 V threshold
+    const failType = randInt(0, 2);
+    if (failType === 0) {
+      // Insufficient cathodic protection (OFF DC too positive)
+      primaryOffDC = rand(-0.84, -0.60);
+      primaryOnDC  = primaryOffDC - rand(0.01, 0.10);
+    } else if (failType === 1) {
+      // ON DC also insufficient
+      primaryOffDC = rand(-1.20, -0.86);  // OFF OK
+      primaryOnDC  = rand(-0.84, -0.60);  // ON fails
+    } else {
+      // AC stray current interference exceeds 4 V NACE SP0177 limit
+      primaryOffDC = rand(-1.20, -0.86);
+      primaryOnDC  = primaryOffDC - rand(0.05, 0.25);
+      primaryOnAC  = rand(4.1, 8.0);      // AC violation
+    }
+    if (!primaryOnAC) primaryOnAC = rand(0.0, 3.0);
+  }
+
+  // ── Rectifier output ──
+  const primaryOutVoltage     = rand(12, 48);
+  const primaryOutCurrent     = rand(0.5, 15.0);
+  const primaryOutVoltageLeft = primaryOutVoltage + rand(-2, 2);
+
+  // ── Casing readings ──
+  const casingOnDC  = rand(-0.60, -1.20);
+  const casingOffDC = casingOnDC + rand(0.02, 0.15);
+  const casingOnAC  = rand(0.0, 2.0);
+  const casingOutVoltageFound = rand(10, Math.max(11, primaryOutVoltage - 1));
+  const casingOutVoltageLeft  = casingOutVoltageFound + rand(-1, 1);
+  const casingOutCurrentFound = rand(0.001, 1.5);
+  const casingOutCurrentLeft  = casingOutCurrentFound + rand(-0.05, 0.05);
+  const casingDeltaOff = rand(-0.10, 0.10);
+  const casingDeltaOn  = rand(-0.20, 0.20);
+
+  // Casing current density via shunt formula (NACE SP0177: flag if AC > 0.20 A/m²)
+  const casingAC = densityFromVoltage(0.0001, 0.08);   // AC interference — lower voltage range
+  const casingDC = densityFromVoltage(0.0001, 0.05);
+
+  // ── Foreign structure ──
+  const foreignOnDC  = rand(-0.40, -1.10);
+  const foreignOffDC = foreignOnDC + rand(0.02, 0.10);
+  const foreignOnAC  = rand(0.0, 1.0);
+  const foreignOutCurrentFound = rand(0.001, 0.30);
+  const foreignOutCurrentLeft  = foreignOutCurrentFound + rand(-0.01, 0.01);
+  const foreignOutVoltageFound = rand(-0.10, 0.10);
+  const foreignOutVoltageLeft  = foreignOutVoltageFound + rand(-0.02, 0.02);
+
+  // Foreign current density via shunt formula (stray current — typically small)
+  const foreignAC = densityFromVoltage(0.00001, 0.03);
+  const foreignDC = densityFromVoltage(0.00001, 0.02);
+
+  // ── Soil resistivity — NACE RP0572 corrosivity scale ──
+  const soilResistivity = rand(2, 500);
+
+  // ── Secondary OFF confirmation ──
+  const offDcPsOffDc = primaryOffDC + rand(-0.02, 0.02);
+
+  return {
+    // ── Lookup map: lowercase fragment → formatted string ──
+    'primary p/s on ac':           primaryOnAC.toFixed(3),
+    'primary p/s on dc':           primaryOnDC.toFixed(3),
+    'primary p/s off dc':          primaryOffDC.toFixed(3),
+    'primary output current':      primaryOutCurrent.toFixed(3),
+    'primary output voltage left': primaryOutVoltageLeft.toFixed(2),
+    'primary output voltage':      primaryOutVoltage.toFixed(2),
+    'casing output voltage left':  casingOutVoltageLeft.toFixed(3),
+    'casing output voltage found': casingOutVoltageFound.toFixed(3),
+    'casing output current found': casingOutCurrentFound.toFixed(4),
+    'casing output current left':  casingOutCurrentLeft.toFixed(4),
+    // Density = (V_shunt × SF) / couponM2
+    'casing ac current density':   casingAC.density.toFixed(4),
+    'casing dc current density':   casingDC.density.toFixed(4),
+    'casing to p/s delta off':     casingDeltaOff.toFixed(3),
+    'casing to p/s delta on':      casingDeltaOn.toFixed(3),
+    'casing p/s on dc':            casingOnDC.toFixed(3),
+    'casing p/s off dc':           casingOffDC.toFixed(3),
+    'casing ac current':           casingAC.current.toFixed(6),
+    'casing dc current':           casingDC.current.toFixed(6),
+    'casing p/s on ac':            casingOnAC.toFixed(3),
+    'casing soil resistivity':     soilResistivity.toFixed(1),
+    'foreign output current found':foreignOutCurrentFound.toFixed(4),
+    'foreign output current left': foreignOutCurrentLeft.toFixed(4),
+    'foreign output voltage found':foreignOutVoltageFound.toFixed(4),
+    'foreign output voltage left': foreignOutVoltageLeft.toFixed(4),
+    'foreign ac current density':  foreignAC.density.toFixed(4),
+    'foreign dc current density':  foreignDC.density.toFixed(4),
+    'foreign p/s on dc':           foreignOnDC.toFixed(3),
+    'foreign p/s off dc':          foreignOffDC.toFixed(3),
+    'foreign ac current':          foreignAC.current.toFixed(6),
+    'foreign dc current':          foreignDC.current.toFixed(6),
+    'foreign p/s on ac':           foreignOnAC.toFixed(3),
+    'off dc p/s off dc':           offDcPsOffDc.toFixed(3),
+    'soil pole soil resistivity':  soilResistivity.toFixed(1),
+    'soil bar soil resistivity':   (soilResistivity * rand(0.85, 1.15)).toFixed(1),
+  };
+}
+
+/* getMeasVal — look up a column by longest-matching key */
+function getMeasVal(col, readings) {
+  if (!readings) return rand(-1,1).toFixed(3);
+  const lc   = col.toLowerCase();
+  const keys = Object.keys(readings).sort((a,b) => b.length - a.length);
+  for (const k of keys) if (lc.includes(k)) return readings[k];
+  // Unit-based fallbacks
+  if (/\(v\)/i.test(col))   return rand(-1.2,-0.85).toFixed(3);
+  if (/\(a\)/i.test(col))   return rand(0.001,0.01).toFixed(4);
+  if (/\(ohm/i.test(col))    return rand(2,500).toFixed(1);
+  if (/\(a\/m/i.test(col))  return rand(0.0001,0.05).toFixed(4);
+  return rand(-1,1).toFixed(3);
+}
+
+
+/* Extract measurement column names for the inspection file.
+   STRICTLY derived from Threshold / Threshold Operator columns in the ref file:
+     "Primary P/S ON AC Threshold Operator" → "Primary P/S ON AC"
+     "Primary P/S ON AC Threshold"          → "Primary P/S ON AC"
+   Deduplication ensures each measurement appears only once.
+   No other columns are included. */
+function extractMeasCols(header) {
+  const seen = new Set();
+  const cols = [];
+  (header || []).forEach(col => {
+    if (!col) return;
+    const ct = col.trim();
+    // Strip "Threshold Operator" suffix (more specific — must come first)
+    let base = null;
+    if (/\s+Threshold\s+Operator\s*$/i.test(ct)) {
+      base = ct.replace(/\s+Threshold\s+Operator\s*$/i, '').trim();
+    } else if (/\s+Threshold\s*$/i.test(ct)) {
+      base = ct.replace(/\s+Threshold\s*$/i, '').trim();
+    }
+    if (base && base.length > 0 && !seen.has(base)) {
+      seen.add(base);
+      cols.push(base);
+    }
+  });
+  return cols;
+}
+
+/* Build inspection header from the asset reference header */
+function buildInspHeader(assetHeader) {
+  const measCols = extractMeasCols(assetHeader);
+  return ['Segment*', 'Asset Name*', ...measCols, 'Date of Inspection*', 'Survey Name*', 'Technician', 'Comments'];
+}
+
+/* ═══════════════════════════════════════════════════
+   MAP — LEAFLET
+═══════════════════════════════════════════════════ */
+let map, markerLayer;
+const waypoints = [];        // L.LatLng[]
+let polylineDraw = null;     // current drawn polyline
+let drawingActive = false;
+
+window.addEventListener('load', () => {
+  map = L.map('map', { doubleClickZoom: false }).setView([25,-80], 4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom:19, attribution:'© OpenStreetMap'
+  }).addTo(map);
+  markerLayer = L.layerGroup().addTo(map);
+});
+
+/* Haversine distance in km */
+function hvKm(ll1,ll2) {
+  const R=6371, f=Math.PI/180;
+  const dLat=(ll2.lat-ll1.lat)*f, dLon=(ll2.lng-ll1.lng)*f;
+  const a=Math.sin(dLat/2)**2+Math.cos(ll1.lat*f)*Math.cos(ll2.lat*f)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function totalKm(pts) { let d=0; for(let i=1;i<pts.length;i++) d+=hvKm(pts[i-1],pts[i]); return d; }
+
+/* Destination point given start, bearing (rad), distance (km) */
+function destPt(ll, bearing, distKm) {
+  const R=6371, d=distKm/R, f=Math.PI/180;
+  const lat1=ll.lat*f, lon1=ll.lng*f;
+  const lat2=Math.asin(Math.sin(lat1)*Math.cos(d)+Math.cos(lat1)*Math.sin(d)*Math.cos(bearing));
+  const lon2=lon1+Math.atan2(Math.sin(bearing)*Math.sin(d)*Math.cos(lat1),Math.cos(d)-Math.sin(lat1)*Math.sin(lat2));
+  return { lat: lat2/f, lng: lon2/f };  // plain object — no Leaflet dependency
+}
+function bearing(ll1,ll2) {
+  const f=Math.PI/180, dL=(ll2.lng-ll1.lng)*f;
+  const lat1=ll1.lat*f, lat2=ll2.lat*f;
+  return Math.atan2(Math.sin(dL)*Math.cos(lat2), Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dL));
+}
+
+/* Interpolate evenly-spaced points along waypoints polyline */
+function interpolatePoints(spacingKm) {
+  if (waypoints.length < 2) return [];
+  const pts = [waypoints[0]];
+  let segIdx=0, posInSeg=0;
+
+  while (segIdx < waypoints.length-1) {
+    const segLen = hvKm(waypoints[segIdx], waypoints[segIdx+1]);
+    const bear   = bearing(waypoints[segIdx], waypoints[segIdx+1]);
+    posInSeg += spacingKm;
+
+    while (posInSeg <= segLen) {
+      pts.push(destPt(waypoints[segIdx], bear, posInSeg));
+      posInSeg += spacingKm;
+    }
+    posInSeg -= segLen;
+    segIdx++;
+  }
+  return pts;
+}
+
+function updateLiveCounter() {
+  const spacing = parseFloat(document.getElementById('assetSpacing').value)||0.5;
+  if (waypoints.length < 2) {
+    document.getElementById('liveCounter').textContent = waypoints.length===1?'📍 1 point — keep drawing':'Draw a pipeline';
+    return;
+  }
+  const km    = totalKm(waypoints);
+  const count = interpolatePoints(spacing).length;
+  const dStr  = km<1 ? `${(km*1000).toFixed(0)} m` : `${km.toFixed(2)} km`;
+  document.getElementById('liveCounter').textContent = `📏 ${dStr} → ${count.toLocaleString()} assets`;
+}
+
+function redrawPolyline() {
+  if (polylineDraw) map.removeLayer(polylineDraw);
+  if (waypoints.length >= 2) {
+    polylineDraw = L.polyline(waypoints, {color:'#e74c3c',weight:3}).addTo(map);
+  }
+}
+
+function onMapClick(e) {
+  if (!drawingActive) return;
+  waypoints.push(e.latlng);
+  L.circleMarker(e.latlng,{radius:5,color:'#e74c3c',fillColor:'#fff',fillOpacity:1,weight:2}).addTo(markerLayer);
+  redrawPolyline();
+  updateLiveCounter();
+}
+function onMapDblClick(e) {
+  if (waypoints.length > 0) waypoints.pop(); // remove duplicate from dblclick
+  if (waypoints.length < 2) { clearAll(); return; }
+  drawingActive = false;
+  map.off('click', onMapClick);
+  map.off('dblclick', onMapDblClick);
+  map.getContainer().style.cursor = '';
+  redrawPolyline();
+  updateLiveCounter();
+}
+
+function startDrawingLine() {
+  clearAll();
+  drawingActive = true;
+  map.getContainer().style.cursor = 'crosshair';
+  document.getElementById('liveCounter').textContent = '📍 Click map to add points…';
+  map.on('click', onMapClick);
+  map.on('dblclick', onMapDblClick);
+}
+function clearAll() {
+  drawingActive = false;
+  map.off('click', onMapClick);
+  map.off('dblclick', onMapDblClick);
+  map.getContainer().style.cursor = '';
+  waypoints.length = 0;
+  if (polylineDraw) { map.removeLayer(polylineDraw); polylineDraw=null; }
+  markerLayer.clearLayers();
+  document.getElementById('liveCounter').textContent = 'Draw a pipeline';
+}
+function locateMe() {
+  navigator.geolocation.getCurrentPosition(p=>map.setView([p.coords.latitude,p.coords.longitude],14),
+    ()=>alert('Location access denied.'));
+}
+
+/* ═══════════════════════════════════════════════════
+   UI HELPERS
+═══════════════════════════════════════════════════ */
+function yieldUI()    { return new Promise(r=>setTimeout(r,0)); }
+function showProgress(pct,lbl) {
+  document.getElementById('progressWrap').style.display='block';
+  document.getElementById('progressFill').style.width=`${Math.min(100,pct)}%`;
+  document.getElementById('progressLabel').textContent=lbl;
+}
+function hideProgress() { document.getElementById('progressWrap').style.display='none'; }
+function setStatus(msg) {
+  const b=document.getElementById('statusBar'); b.textContent=msg; b.style.display='block';
+}
+function showPreviewTable(tid,headers,rows) {
+  const t=document.getElementById(tid);
+  let h='<thead><tr>'+headers.map(x=>`<th>${x}</th>`).join('')+'</tr></thead><tbody>';
+  rows.forEach(r=>{ h+='<tr>'+r.map(c=>`<td>${c}</td>`).join('')+'</tr>'; });
+  t.innerHTML=h+'</tbody>';
+}
+function switchTab(which) {
+  ['asset','inspection'].forEach(w=>{
+    document.getElementById('panel'+w.charAt(0).toUpperCase()+w.slice(1)).style.display = w===which?'':'none';
+    document.getElementById('tab'+w.charAt(0).toUpperCase()+w.slice(1)).classList.toggle('active', w===which);
+  });
+}
+function switchMode(mode) {
+  document.getElementById('mode1Panel').style.display=mode===1?'':'none';
+  document.getElementById('mode2Panel').style.display=mode===2?'':'none';
+  document.getElementById('modeBtn1').classList.toggle('active',mode===1);
+  document.getElementById('modeBtn2').classList.toggle('active',mode===2);
+  document.getElementById('tabAsset').style.display        = mode===2?'none':'';
+  clearDownloads();
+  document.getElementById('statusBar').style.display       = 'none';
+  document.getElementById('assetBadge').textContent        = '–';
+  document.getElementById('inspBadge').textContent         = '–';
+  document.getElementById('previewTable').innerHTML        = '';
+  document.getElementById('previewInspTable').innerHTML    = '';
+  document.getElementById('assetReadStatus').textContent   = '';
+  hideProgress();
+  if(mode===2) switchTab('inspection'); else switchTab('asset');
+}
+
+/* ═══════════════════════════════════════════════════
+   XLSX DOWNLOAD
+═══════════════════════════════════════════════════ */
+function downloadXlsx(aoa, sheetName, fileName, linkId) {
+  const ws  = XLSX.utils.aoa_to_sheet(aoa);
+  const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+  Object.keys(ws).forEach(addr=>{
+    if(addr[0]==='!') return;
+    const c=ws[addr];
+    if(c && dateRe.test(String(c.v))){ c.t='s'; c.v=String(c.v); delete c.w; }
+  });
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,sheetName);
+  const out=XLSX.write(wb,{bookType:'xlsx',type:'binary'});
+  const s2ab=s=>{const b=new ArrayBuffer(s.length),v=new Uint8Array(b);for(let i=0;i<s.length;i++)v[i]=s.charCodeAt(i)&0xFF;return b;};
+  const blob=new Blob([s2ab(out)],{type:'application/octet-stream'});
+  const link=document.getElementById(linkId);
+  link.href=URL.createObjectURL(blob); link.download=fileName; link.style.display='inline-block';
+}
+
+
+/* ═══════════════════════════════════════════════════
+   CHUNKED DOWNLOAD HELPERS
+   Assets split into 1000-row files.
+   Each chunk's inspection file contains all 10 years
+   of data for that chunk's assets only.
+═══════════════════════════════════════════════════ */
+
+function clearDownloads() {
+  const row = document.getElementById('downloadRow');
+  if (row) row.innerHTML = '';
+  const con = document.getElementById('downloadContainer');
+  if (con) con.style.display = 'none';
+}
+
+async function generateChunkedDownloads(header, assetRows, inspHeader, inspRows, assetType, YEARS, assets) {
+  const assetChunk = parseInt(document.getElementById('assetChunkSel').value) || 0;
+  const inspChunk  = parseInt(document.getElementById('inspChunkSel').value)  || 0;
+
+  // asset chunk size: 0 = all in one file
+  const assetCs    = assetChunk > 0 ? assetChunk : assetRows.length;
+  const totalAssetFiles = Math.ceil(assetRows.length / assetCs);
+
+  const row = document.getElementById('downloadRow');
+  row.innerHTML = '';
+  document.getElementById('downloadContainer').style.display = 'block';
+  const totalAssets = assets.length;
+
+  for (let ac = 0; ac < totalAssetFiles; ac++) {
+    const aStart  = ac * assetCs;
+    const aEnd    = Math.min(aStart + assetCs, assetRows.length);
+    const fileNum = ac + 1;
+    const suffix  = totalAssetFiles > 1 ? `_${fileNum}` : '';
+
+    // ── Asset file for this chunk ────────────────────────────────────────────
+    const assetBlob = xlsxBlob([header, ...assetRows.slice(aStart, aEnd)], 'Assets');
+    const assetLabel = totalAssetFiles > 1
+      ? `⬇ Asset File ${fileNum}/${totalAssetFiles}  (rows ${(aStart+1).toLocaleString()}–${aEnd.toLocaleString()})`
+      : `⬇ Asset Import File  (${assetRows.length.toLocaleString()} assets)`;
+    row.appendChild(makeDownloadLink(assetBlob, `${assetType}_Asset_Import${suffix}.xlsx`, assetLabel, '#27ae60'));
+
+    // ── Inspection rows belonging to this asset chunk ────────────────────────
+    const chunkInspRows = [];
+    for (let yr = 0; yr < YEARS; yr++) {
+      chunkInspRows.push(...inspRows.slice(yr * totalAssets + aStart, yr * totalAssets + aEnd));
+    }
+
+    // ── Split inspection rows further if inspChunk is set ────────────────────
+    const inspCs = inspChunk > 0 ? inspChunk : chunkInspRows.length;
+    const totalInspFiles = Math.ceil(chunkInspRows.length / inspCs);
+
+    for (let ic = 0; ic < totalInspFiles; ic++) {
+      const iStart    = ic * inspCs;
+      const iEnd      = Math.min(iStart + inspCs, chunkInspRows.length);
+      const inspSlice = chunkInspRows.slice(iStart, iEnd);
+      const inspNum   = totalInspFiles > 1 ? ic + 1 : null;
+
+      // Filename: Asset_Import_1_Inspection_1.xlsx or simpler if only 1 of each
+      let inspFileName, inspLabel;
+      if (totalAssetFiles > 1 && totalInspFiles > 1) {
+        inspFileName = `${assetType}_Inspection_Import_${fileNum}_${inspNum}.xlsx`;
+        inspLabel    = `⬇ Inspection File ${fileNum}-${inspNum}  (${inspSlice.length.toLocaleString()} records)`;
+      } else if (totalAssetFiles > 1) {
+        inspFileName = `${assetType}_Inspection_Import_${fileNum}.xlsx`;
+        inspLabel    = `⬇ Inspection File ${fileNum}/${totalAssetFiles}  (${inspSlice.length.toLocaleString()} records)`;
+      } else if (totalInspFiles > 1) {
+        inspFileName = `${assetType}_Inspection_Import_${inspNum}.xlsx`;
+        inspLabel    = `⬇ Inspection File ${inspNum}/${totalInspFiles}  (${inspSlice.length.toLocaleString()} records)`;
+      } else {
+        inspFileName = `${assetType}_Inspection_Import.xlsx`;
+        inspLabel    = `⬇ Inspection Import File  (${inspSlice.length.toLocaleString()} records)`;
+      }
+
+      const inspBlob = xlsxBlob([inspHeader, ...inspSlice], 'Inspections');
+      row.appendChild(makeDownloadLink(inspBlob, inspFileName, inspLabel, '#e67e22'));
+    }
+
+    // Visual divider between asset file groups
+    if (ac < totalAssetFiles - 1) {
+      const sep = document.createElement('div');
+      sep.style.cssText = 'width:100%;height:1px;background:#e0e0e0;margin:6px 0;';
+      row.appendChild(sep);
+    }
+
+    showProgress(92 + ((ac+1) / totalAssetFiles) * 7, `Writing file group ${fileNum}/${totalAssetFiles}…`);
+    await yieldUI();
+  }
+}
+
+function xlsxBlob(aoa, sheetName) {
+  const ws     = XLSX.utils.aoa_to_sheet(aoa);
+  const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+  Object.keys(ws).forEach(addr => {
+    if (addr[0]==='!') return;
+    const cell = ws[addr];
+    if (cell && dateRe.test(String(cell.v))) { cell.t='s'; cell.v=String(cell.v); delete cell.w; }
+  });
+  const wb  = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  const out = XLSX.write(wb, {bookType:'xlsx', type:'binary'});
+  const s2ab = s => { const b=new ArrayBuffer(s.length),v=new Uint8Array(b); for(let i=0;i<s.length;i++) v[i]=s.charCodeAt(i)&0xFF; return b; };
+  return new Blob([s2ab(out)], {type:'application/octet-stream'});
+}
+
+function makeDownloadLink(blob, fileName, label, color) {
+  const a = document.createElement('a');
+  a.href           = URL.createObjectURL(blob);
+  a.download       = fileName;
+  a.textContent    = label;
+  a.style.cssText  = `display:inline-block;padding:8px 13px;background:${color};color:#fff;border-radius:3px;font-size:12px;text-decoration:none;margin:2px 4px 2px 0;`;
+  return a;
+}
+
+/* ═══════════════════════════════════════════════════
+   MODE 1 — GENERATE ASSETS + INSPECTIONS
+═══════════════════════════════════════════════════ */
+document.getElementById('assetForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const fileInput = document.getElementById('assetFile');
+  if (!fileInput.files.length) return alert('Please select a reference file.');
+  if (waypoints.length < 2)   return alert('Please draw a pipeline on the map first.\nClick to add points, double-click to finish.');
+
+  if (drawingActive) { // auto-finish if still drawing
+    drawingActive=false; map.off('click',onMapClick); map.off('dblclick',onMapDblClick);
+    map.getContainer().style.cursor='';
+  }
+
+  const spacingKm  = parseFloat(document.getElementById('assetSpacing').value)||0.5;
+  const generateBtn = document.getElementById('generateBtn');
+  generateBtn.disabled=true; generateBtn.textContent='⏳ Working…';
+  const reader = new FileReader();
+  reader.onload = async function(ev) {
+    const wb     = XLSX.read(ev.target.result,{type:'binary'});
+    const sheet  = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
+    const header = sheet[0];
+    const prefix = fileInput.files[0].name.split(/[\s_.]/)[0];
+    await generateFromHeader(header, prefix, spacingKm, generateBtn);
+  };
+  reader.readAsBinaryString(fileInput.files[0]);
+});
+
+/* ═══════════════════════════════════════════════════
+   GENERATION FUNCTION
+═══════════════════════════════════════════════════ */
+async function generateFromHeader(header, assetType, spacingKm, generateBtn) {
+  try {
+      const today   = new Date();
+      const lonIdx  = header.findIndex(h=>/Longitude\*/i.test(h));
+      const latIdx  = header.findIndex(h=>/Latitude\*/i.test(h));
+      const segIdx  = header.findIndex(h=>/^Segment\*$/i.test(h ? h.trim() : ''));
+      // Level 3 column = the column immediately before Segment* in the hierarchy
+      // Could be named "Area/Product*", "Region*", "Pipeline*", anything — detect by position
+      const l3ColIdx = segIdx > 0 ? segIdx - 1 : -1;
+
+      /* Interpolate points */
+      showProgress(2,'Interpolating pipeline points…'); await yieldUI();
+      const points = interpolatePoints(spacingKm);
+      if (!points.length) { alert('No points generated. Check spacing and pipeline length.'); return; }
+
+      /* ── ASSET ROWS ── */
+      const assetRows = [], assets = [];
+      const CHUNK = 500;
+      const sr2AsNumber = document.getElementById('sr2IsNumber').checked;
+
+      // Hierarchy context — null if no company selected (fallback to random)
+      const hierCtx = getHierarchyContext();
+      // Total combinations = N_l3 × 3 segments each
+      const hierCombos = hierCtx
+        ? hierCtx.flatMap(([l3Name, l3Data]) =>
+            l3Data.segments.map(seg => ({ l3Name, seg }))
+          )
+        : null;
+
+      // Fallback month-based segments when no hierarchy is loaded
+      const creationMonth = MONTH_NAMES[today.getMonth()];
+      const FALLBACK_SEGS = [
+        { l3Name: null, seg: { name: `Seg- ${creationMonth} 1`, type: 'Mainline' } },
+        { l3Name: null, seg: { name: `Seg- ${creationMonth} 2`, type: 'Spur'     } },
+        { l3Name: null, seg: { name: `Seg- ${creationMonth} 3`, type: 'Mainline' } },
+      ];
+      const combos = hierCombos || FALLBACK_SEGS;
+
+      for (let i=0; i<points.length; i++) {
+        const assetName = generateAssetName(assetType, today, i);
+        // Cycle through hierarchy combos (l3 × segment)
+        const combo   = combos[i % combos.length];
+        const segment = combo.seg.name;
+        const segType = combo.seg.type;
+        const l3Value = combo.l3Name;    // null when no hierarchy
+        const loc     = getLocation();
+        // Fixed physical metadata for this coupon/shunt — stored in asset file
+        const meta      = generateAssetMeta();
+
+        // Pre-determine OFF DC polarization shift decision per column so operator+threshold stay linked
+        // Key: column index of Threshold Operator → true if polarization shift chosen
+        const polShiftCols = new Set();
+        header.forEach((col, ci) => {
+          const ct = col ? col.trim() : '';
+          if (/Threshold Operator/i.test(ct) && /OFF.?DC/i.test(ct) && Math.random() < 0.35)
+            polShiftCols.add(ci);
+        });
+
+        const row = header.map((col,ci) => {
+          const ct = col ? col.trim() : '';
+          if (ct==='Stationing')                                return randInt(1,9999);
+          if (ct==='Facility Shot #')                           return generateFacilityShot();
+          // Level 3 column detected by position (column just before Segment*)
+          // Works regardless of column name: "Area/Product*", "Region*", etc.
+          if (l3ColIdx !== -1 && ci === l3ColIdx)               return l3Value || '';
+          // Segment and Segment Type come from hierarchy (or fallback month-based)
+          if (/Segment\*/i.test(ct))                            return segment;
+          if (/Segment Type\*/i.test(ct))                       return segType;
+          if (/Asset Name\*/i.test(ct))                         return assetName;
+          if (/Primary Seg\?/i.test(ct))                        return 'Y';
+          if (/Longitude\*/i.test(ct))                          return points[i].lng.toFixed(6);
+          if (/Latitude\*/i.test(ct))                           return points[i].lat.toFixed(6);
+          if (lonIdx!==-1 && ci===lonIdx+1 && ct)              return generateSpatialRef(ct,i,spacingKm);
+          if (lonIdx!==-1 && ci===lonIdx+2 && ct)              return sr2AsNumber ? i+1 : generateSpatialRef(ct,i,spacingKm);
+          if (lonIdx!==-1 && ci===lonIdx+3 && ct)              return generateSR3();
+          if (latIdx!==-1 && ci===latIdx+1)                    return ((i+1)*1.1).toFixed(2);
+          if (/Criteria$/i.test(ct))                           return CRITERIA_SEQ[i%CRITERIA_SEQ.length];
+          if (/Mileage\*/i.test(ct))                           return (i*spacingKm).toFixed(3);
+          if (/Creation Date\*/i.test(ct))                     return formatDate(today);
+          if (/Location description/i.test(ct))                return loc;
+          // Coupon Size (cm²) and Portable Shunt Factor (A/V) — fixed per asset
+          if (/Coupon Size/i.test(ct))                         return meta.couponCm2;
+          if (/Portable Shunt Factor|Shunt Factor/i.test(ct))  return meta.shuntFactor;
+          if (/Effective Native.*Depol/i.test(ct))             return rand(-0.90,-0.80).toFixed(3); // Native Depol − threshold ∈ [-0.80,-0.90]
+
+          // ── Threshold Operator — must be checked BEFORE generic Operator ──
+          if (/Threshold Operator/i.test(ct)) {
+            // polarization shift is ONLY assigned when pre-decided via polShiftCols
+            // so the threshold column always sees the correct decision at ci-1
+            if (/OFF.?DC/i.test(ct)) return polShiftCols.has(ci)
+              ? "polarization shift equal to or greater than"
+              : pick(OPERATORS);   // standard operators only — polarization shift never picked randomly
+            return pick(OPERATORS);
+          }
+
+          // ── Threshold value ──
+          if (/Threshold/i.test(ct) && !/Operator/i.test(ct)) {
+            // Wall thickness is always a positive physical dimension (mm or inches)
+            if (/Wall.?Thick/i.test(ct))         return rand(3.0, 25.0).toFixed(2);
+            if (/OFF.?DC/i.test(ct)) {
+              // If polarization shift operator chosen, threshold is the shift amount
+              // Native Depol − Threshold should land in -0.80 to -0.90 range
+              // ∴ for shift values 0.1/0.2/0.3 → NativeDepol ≈ -0.65 to -0.85
+              return polShiftCols.has(ci-1)
+                ? pick(POLSHIFT_THRESHOLDS)        // 0.1, 0.2, 0.3 or -0.850
+                : rand(-1.20,-0.85).toFixed(3);   // OFF DC must be ≤ -0.85 (NACE)
+            }
+            if (/ON.?DC/i.test(ct))              return rand(-1.50,-0.85).toFixed(3);  // ON DC must be < -0.85
+            if (/ON.?AC/i.test(ct))              return rand(1.0, 4.0).toFixed(3);     // AC: 1–4 V limit
+            if (/Current.?Density/i.test(ct))    return rand(0.01, 0.20).toFixed(4);  // A/m² threshold
+            if (/Resistivity/i.test(ct))         return rand(10, 100).toFixed(1);      // ohm-m
+            return rand(-1.20,-0.85).toFixed(3); // generic potential threshold fallback
+          }
+
+
+          // Asset Template* — fill with active template name if selected
+          if (/Asset Template/i.test(ct))                      return getActiveTemplateName(i);
+          // ── Generic Operator (not Threshold Operator) ──
+          if (/Operator/i.test(ct))                            return pick(OPERATORS);
+          if (/Comments?/i.test(ct))                           return generateAssetComment(segment,assetName);
+          if (/_/.test(ct))                                    return rand(0,2).toFixed(1);
+          return '';
+        });
+
+        assetRows.push(row);
+        // Store meta so inspection rows use the same coupon+shunt for each asset
+        assets.push({assetName, segment, couponM2: meta.couponM2, shuntFactor: meta.shuntFactor});
+
+        if (i%CHUNK===0) {
+          showProgress(5+(i/points.length)*35,`Asset ${i.toLocaleString()} of ${points.length.toLocaleString()}…`);
+          await yieldUI();
+        }
+      }
+
+      /* ── INSPECTION ROWS ── */
+      // Build inspection header dynamically from the reference file header
+      const inspMeasCols = extractMeasCols(header);
+      const inspHeader   = buildInspHeader(header);
+
+      const YEARS=10, surveyDates=buildSurveyDates(YEARS);
+      const total=YEARS*assets.length;
+      const inspRows=[]; let cnt=0;
+
+      // Exception rule: 50% assets become exceptions, alternating which 50% each year.
+      // Year 0 → even-index assets are exceptions; Year 1 → odd-index; Year 2 → even; etc.
+      // Exception = first measurement column is left blank → triggers "Required and not collected".
+
+      for (let yr=0; yr<YEARS; yr++) {
+        const sd=surveyDates[yr];
+        const sn=`${pick(SURVEY_PFX)}-${sd.getFullYear()}`;
+        const tech=pick(TECH_NAMES);
+        const latest=yr===YEARS-1;
+
+        for (let ai=0; ai<assets.length; ai++) {
+          const a         = assets[ai];
+          const isExcep   = (ai + yr) % 2 === 0;   // alternates each year
+          const ir = generateCPReadings(a.couponM2, a.shuntFactor, true);
+          const measVals  = inspMeasCols.map((col, ci) =>
+            (isExcep && ci % 2 === yr % 2) ? '' : getMeasVal(col, ir)  // alternate blank cols per year
+          );
+          inspRows.push([
+            a.segment, a.assetName,
+            ...measVals,
+            formatDate(sd), sn, tech,
+            generateInspComment(a.segment,a.assetName,sd.getFullYear(),latest,!isExcep)
+          ]);
+          cnt++;
+          if(cnt%2000===0){
+            showProgress(40+(cnt/total)*45,`Inspection ${cnt.toLocaleString()} of ${total.toLocaleString()}…`);
+            await yieldUI();
+          }
+        }
+      }
+
+      showProgress(88,'Building previews…'); await yieldUI();
+      showPreviewTable('previewTable',    header,      assetRows.slice(0,10));
+      showPreviewTable('previewInspTable',inspHeader,  inspRows.slice(0,10));
+      document.getElementById('assetBadge').textContent=`${assetRows.length.toLocaleString()} assets`;
+      document.getElementById('inspBadge').textContent =`${inspRows.length.toLocaleString()} records`;
+
+      clearDownloads();
+      showProgress(92,'Writing files…'); await yieldUI();
+      await generateChunkedDownloads(header, assetRows, inspHeader, inspRows, assetType, YEARS, assets);
+      showProgress(100,'Done!'); await yieldUI(); hideProgress();
+      setStatus(`✅ Generated ${assetRows.length.toLocaleString()} assets and ${inspRows.length.toLocaleString()} inspection records (${YEARS} annual surveys). Download links ready below.`);
+
+    } catch(err) {
+      alert('Error: '+err.message); hideProgress();
+    } finally {
+      generateBtn.disabled=false; generateBtn.textContent='⚙ Generate Asset & Inspection Records';
+    }
+}
+
+/* ═══════════════════════════════════════════════════
+   MODE 2 — FILE SELECT PREVIEW
+═══════════════════════════════════════════════════ */
+document.getElementById('existingAssetFile').addEventListener('change', function(){
+  const el=document.getElementById('assetReadStatus'), file=this.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
+      const hdr=rows[0]||[];
+      const nc=hdr.findIndex(h=>/Asset Name\*/i.test(h));
+      const sc=hdr.findIndex(h=>/Segment\*/i.test(h));
+      if(nc===-1||sc===-1){el.style.color='#e74c3c';el.textContent='⚠ Could not find "Asset Name*" or "Segment*" columns.';return;}
+      const cnt=rows.slice(1).filter(r=>r[nc]&&String(r[nc]).trim()).length;
+      el.style.color='#27ae60';
+      el.textContent=`✅ Found ${cnt.toLocaleString()} assets → will generate ${(cnt*10).toLocaleString()} inspection records (10 annual surveys).`;
+    }catch(err){el.style.color='#e74c3c';el.textContent='⚠ Could not read file: '+err.message;}
+  };
+  r.readAsBinaryString(file);
+});
+
+/* ═══════════════════════════════════════════════════
+   MODE 2 — GENERATE INSPECTIONS
+═══════════════════════════════════════════════════ */
+
+
+document.getElementById('inspOnlyForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  const fileInput=document.getElementById('existingAssetFile');
+  if(!fileInput.files.length) return alert('Please select an existing asset file.');
+
+  const btn=this.querySelector('button[type="submit"]');
+  btn.disabled=true; btn.textContent='⏳ Working…';
+
+  const reader=new FileReader();
+  reader.onload=async function(ev){
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'binary'});
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
+      const hdr=rows[0]||[];
+      const nc=hdr.findIndex(h=>/Asset Name\*/i.test(h));
+      const sc=hdr.findIndex(h=>/Segment\*/i.test(h));
+      if(nc===-1||sc===-1) return alert('The file must contain "Asset Name*" and "Segment*" columns.');
+
+      // Try to read Portable Shunt Factor, Coupon Size and Effective Native (Depol) from the uploaded asset file
+      const sfColIdx  = hdr.findIndex(h => /Portable Shunt Factor|Shunt Factor/i.test(h));
+      const csColIdx  = hdr.findIndex(h => /Coupon Size/i.test(h));
+
+      const assets=rows.slice(1)
+        .filter(r=>r[nc]&&String(r[nc]).trim())
+        .map(r=>{
+          // Coupon size from file (cm²) → convert to m²; fallback to 25 cm² default
+          const cs  = csColIdx !== -1 ? parseFloat(r[csColIdx]) : NaN;
+          const cm2 = (!isNaN(cs) && cs > 0) ? cs : 25;
+          // Shunt factor from file (A/V); fallback to 0.1 A/V (10Ω shunt)
+          const sf  = sfColIdx !== -1 ? parseFloat(r[sfColIdx]) : NaN;
+          return {
+            assetName   : String(r[nc]).trim(),
+            segment     : String(r[sc]||'').trim(),
+            couponM2    : cm2 / 10000,
+            shuntFactor : (!isNaN(sf) && sf > 0) ? sf : 0.1,
+          };
+        });
+      if(!assets.length) return alert('No asset records found.');
+
+      const prefix=assets[0].assetName.split('-')[0]||'Asset';
+      // Build inspection header from the uploaded asset file's header
+      const inspMeasCols2 = extractMeasCols(hdr);
+      const inspHeader2   = buildInspHeader(hdr);
+
+      const YEARS=parseInt(document.getElementById('yearsSel2').value)||10, surveyDates=buildSurveyDates(YEARS);
+      const total=YEARS*assets.length;
+      const inspRows=[]; let cnt=0;
+
+      // Exception rule: 50% assets become exceptions, alternating which 50% each year.
+      // Year 0 → even-index assets are exceptions; Year 1 → odd-index; Year 2 → even; etc.
+      // Exception = first measurement column is left blank → triggers "Required and not collected".
+
+      showProgress(2,`Generating ${total.toLocaleString()} inspection records…`); await yieldUI();
+
+      for(let yr=0;yr<YEARS;yr++){
+        const sd=surveyDates[yr];
+        const surveyYear=sd.getFullYear();
+        const sn=`${pick(SURVEY_PFX)}-${surveyYear}`;
+        const tech=pick(TECH_NAMES);
+        const latest=yr===YEARS-1;
+
+        for(let ai=0;ai<assets.length;ai++){
+          const a       = assets[ai];
+          const isExcep = (ai + yr) % 2 === 0;   // alternates each year
+          const ir2     = generateCPReadings(a.couponM2, a.shuntFactor, true);
+
+          // Random month/day per asset — year stays fixed to the survey year
+          const assetMonth  = randInt(0,11);
+          const assetMaxDay = new Date(surveyYear, assetMonth+1, 0).getDate();
+          const assetDay    = randInt(1, assetMaxDay);
+          const assetDate   = new Date(surveyYear, assetMonth, assetDay);
+
+          const measVals = inspMeasCols2.map((col, ci) =>
+            (isExcep && ci % 2 === yr % 2) ? '' : getMeasVal(col, ir2)  // alternate blank cols each year
+          );
+
+          inspRows.push([
+            a.segment, a.assetName,
+            ...measVals,
+            formatDate(assetDate), sn, tech,
+            generateInspComment(a.segment, a.assetName, surveyYear, latest, !isExcep)
+          ]);
+          cnt++;
+          if(cnt%2000===0){showProgress(2+(cnt/total)*85,`${cnt.toLocaleString()} of ${total.toLocaleString()}…`);await yieldUI();}
+        }
+      }
+
+      showProgress(90,'Writing XLSX…'); await yieldUI();
+      // Preview: one row per survey year so different dates/years are visible
+      const previewRows2 = Array.from({length:YEARS},(_,yr)=>inspRows[yr*assets.length]).filter(Boolean);
+      showPreviewTable('previewInspTable',inspHeader2,previewRows2);
+      document.getElementById('inspBadge').textContent=`${inspRows.length.toLocaleString()} records (${YEARS} yrs × ${assets.length.toLocaleString()} assets)`;
+      switchTab('inspection');
+
+      // ── Chunked downloads for Mode 2 ────────────────────────────────────────
+      const inspChunk2 = parseInt(document.getElementById('inspChunkSel2').value) || 0;
+      const inspCs2    = inspChunk2 > 0 ? inspChunk2 : inspRows.length;
+      const totalFiles = Math.ceil(inspRows.length / inspCs2);
+
+      clearDownloads();
+      document.getElementById('downloadContainer').style.display = 'block';
+      const dlRow = document.getElementById('downloadRow');
+
+      for (let fc = 0; fc < totalFiles; fc++) {
+        const sliceStart = fc * inspCs2;
+        const sliceEnd   = Math.min(sliceStart + inspCs2, inspRows.length);
+        const slice      = inspRows.slice(sliceStart, sliceEnd);
+        const fn         = totalFiles > 1
+          ? `${prefix}_Inspection_Import_${fc+1}.xlsx`
+          : `${prefix}_Inspection_Import.xlsx`;
+        const lbl        = totalFiles > 1
+          ? `⬇ Inspection File ${fc+1}/${totalFiles}  (${slice.length.toLocaleString()} records)`
+          : `⬇ Inspection Import File  (${slice.length.toLocaleString()} records)`;
+        dlRow.appendChild(makeDownloadLink(xlsxBlob([inspHeader2,...slice],'Inspections'), fn, lbl, '#e67e22'));
+        if (fc < totalFiles-1) {
+          const sep = document.createElement('div');
+          sep.style.cssText = 'width:100%;height:1px;background:#e0e0e0;margin:4px 0;';
+          dlRow.appendChild(sep);
+        }
+        showProgress(90 + ((fc+1)/totalFiles)*9, `Writing file ${fc+1}/${totalFiles}…`);
+        await yieldUI();
+      }
+
+      showProgress(100,'Done!'); await yieldUI(); hideProgress();
+      const splitMsg = totalFiles > 1 ? ` Split into ${totalFiles} files (≤${inspCs2.toLocaleString()} records each).` : '';
+      setStatus(`✅ Generated ${inspRows.length.toLocaleString()} inspection records for ${assets.length.toLocaleString()} assets — ${YEARS} annual surveys.${splitMsg} 50% exceptions (alternating per year) via blank measurement.`);
+
+    } catch(err){
+      alert('Error: '+err.message); hideProgress();
+    } finally {
+      btn.disabled=false; btn.textContent='⚙ Generate Inspection Records';
+    }
+  };
+  reader.readAsBinaryString(fileInput.files[0]);
+});
+
+/* ═══════════════════════════════════════════════════
+   COMPANY HIERARCHY — localStorage storage
+   Key: HIER_KEY
+   Structure:
+   {
+     "Indian Surveys": {
+       "South-East": {
+         "level1Value": "Indian Surveys",
+         "level2Value": "Maharashtra",
+         "segments": [
+           {"name":"Seg- South-East 1","type":"Mainline"},
+           {"name":"Seg- South-East 2","type":"Spur"},
+           {"name":"Seg- South-East 3","type":"Mainline"}
+         ]
+       },
+       ...
+     }
+   }
+   Rules:
+   API: getAllLevel4ValueByPrimaryCompany
+   Each item provides:
+     level3Value  → Level 3 column (first column, e.g. "AL - Decatur")
+     level4Value  → Segment name (Segment* column, e.g. "2022 - 2" N2 Decatur to 3M")
+     segmentType  → Segment Type* column (e.g. "MAINLINE TRUNK")
+   Merge rules:
+   - Existing l3 + segment combo → kept, never overwritten
+   - New l3 → added with its level4/segmentType entries as segments
+   - New segment under existing l3 → appended
+═══════════════════════════════════════════════════ */
+const HIER_KEY = 'pipelineHierarchy_v1';
+let activeCompany  = null;   // company currently selected for generation
+let activeTemplate = null;   // { assetType: string, templateNames: string[] } or null
+
+function hierLoad()    { try { return JSON.parse(localStorage.getItem(HIER_KEY)||'{}'); } catch { return {}; } }
+function hierSave(obj) { localStorage.setItem(HIER_KEY, JSON.stringify(obj)); }
+
+function hierSetStatus(msg, ok=true) {
+  const el = document.getElementById('hierStatus');
+  el.style.color = ok ? '#27ae60' : '#e74c3c';
+  el.textContent = msg;
+}
+
+function parseAndSaveHierarchy() {
+  const company = document.getElementById('hierCompanyInput').value.trim();
+  const raw     = document.getElementById('hierJsonInput').value.trim();
+  if (!company) { hierSetStatus('⚠ Enter a company name first.', false); return; }
+  if (!raw)     { hierSetStatus('⚠ Paste the API JSON first.', false); return; }
+
+  let parsed;
+  try { parsed = JSON.parse(raw); }
+  catch(e) { hierSetStatus('⚠ Invalid JSON: ' + e.message, false); return; }
+
+  // Detect which API response was pasted
+  const d = parsed.data || {};
+
+  // ── Branch: Asset Type Template API ──────────────────────────────────────
+  if (d.getAssetTypeTemplateByPrimaryCompanyId?.items) {
+    const tplItems = d.getAssetTypeTemplateByPrimaryCompanyId.items;
+    if (!Array.isArray(tplItems) || !tplItems.length) {
+      hierSetStatus('⚠ No items found in getAssetTypeTemplateByPrimaryCompanyId.', false); return;
+    }
+    const stored  = hierLoad();
+    const entry   = stored[company] || {};
+    // Ensure __assetTemplates map exists (separate from l3 keys)
+    const tplMap  = entry.__assetTemplates || {};
+
+    tplItems.forEach(atItem => {
+      const assetType = atItem.assetType;
+      if (!assetType) return;
+      const names = (atItem.assetTypeTemplates || [])
+        .filter(t => !t.isDeleted && t.assetTypeTemplateName)
+        .map(t => t.assetTypeTemplateName);
+      if (!names.length) return;
+      // Merge — keep existing, add new names
+      const existing = new Set(tplMap[assetType] || []);
+      names.forEach(n => existing.add(n));
+      tplMap[assetType] = [...existing];
+    });
+
+    entry.__assetTemplates = tplMap;
+    stored[company] = entry;
+    hierSave(stored);
+    refreshHierUI();
+    const totalTpls = Object.values(tplMap).reduce((s,v)=>s+v.length,0);
+    hierSetStatus(`✅ Saved asset templates for "${company}". ${Object.keys(tplMap).length} asset type(s), ${totalTpls} template name(s) total.`);
+    document.getElementById('hierJsonInput').value = '';
+    return;
+  }
+
+  // ── Branch: Level4 / Level3 hierarchy API ────────────────────────────────
+  let items;
+  if (d.getAllLevel4ValueByPrimaryCompany?.items) {
+    items = d.getAllLevel4ValueByPrimaryCompany.items;
+  } else if (d.getAllLevel3ValueByPrimaryCompany?.items) {
+    items = d.getAllLevel3ValueByPrimaryCompany.items;
+  } else {
+    hierSetStatus('⚠ Unrecognised API response. Expected getAllLevel4ValueByPrimaryCompany, getAllLevel3ValueByPrimaryCompany, or getAssetTypeTemplateByPrimaryCompanyId.', false);
+    return;
+  }
+  if (!Array.isArray(items) || items.length === 0) {
+    hierSetStatus('⚠ items array is empty or invalid.', false);
+    return;
+  }
+
+  const stored   = hierLoad();
+  const existing = stored[company] || {};
+
+  // Determine which API version we got
+  const isLevel4 = !!d.getAllLevel4ValueByPrimaryCompany?.items;
+
+  let newL3Count = 0, newSegCount = 0, keptCount = 0;
+
+  if (isLevel4) {
+    /* ── Level4 API: level3Value + level4Value + segmentType ──────────────────
+       level3Value  → Level 3 column (fills first col in asset file)
+       level4Value  → Segment name  (fills Segment* column)
+       segmentType  → Segment Type  (fills Segment Type* column)
+       Multiple items may share the same level3Value → group them.         */
+    items.forEach(item => {
+      const l3      = item.level3Value;
+      const segName = item.level4Value;
+      const segType = item.segmentType || 'MAINLINE TRUNK';
+      if (!l3 || !segName) return;
+
+      if (!existing[l3]) {
+        // New level3Value — create entry with this first segment
+        existing[l3] = {
+          level1Value : item.level1Value || '',
+          level2Value : item.level2Value || '',
+          segments    : [{ name: segName, type: segType }]
+        };
+        newL3Count++;
+        newSegCount++;
+      } else {
+        // Existing level3Value — check if this specific segment is already stored
+        const already = existing[l3].segments.some(s => s.name === segName);
+        if (!already) {
+          existing[l3].segments.push({ name: segName, type: segType });
+          newSegCount++;
+        } else {
+          keptCount++;
+        }
+      }
+    });
+
+  } else {
+    /* ── Level3 API (backward compat): only level3Value provided ─────────────
+       No segment data in response — generate placeholder segments.         */
+    items.forEach(item => {
+      const l3 = item.level3Value;
+      if (!l3) return;
+      if (existing[l3]) {
+        keptCount++;
+      } else {
+        existing[l3] = {
+          level1Value : item.level1Value || '',
+          level2Value : item.level2Value || '',
+          segments    : [
+            { name: `Seg- ${l3} 1`, type: 'Mainline' },
+            { name: `Seg- ${l3} 2`, type: 'Spur'     },
+            { name: `Seg- ${l3} 3`, type: 'Mainline' }
+          ]
+        };
+        newL3Count++;
+      }
+    });
+  }
+
+  stored[company] = existing;
+  hierSave(stored);
+  refreshHierUI();
+
+  let msg;
+  if (isLevel4) {
+    const l3s = Object.keys(existing).length;
+    msg = `✅ Saved. ${newL3Count} new Level3 value${newL3Count!==1?'s':''} added, ${newSegCount} new segment${newSegCount!==1?'s':''} added, ${keptCount} already existed. Total: ${l3s} Level3 values.`;
+  } else {
+    msg = newL3Count > 0
+      ? `✅ Saved. ${newL3Count} new Level3 value(s) added, ${keptCount} existing kept unchanged.`
+      : `✅ No new Level3 values — all ${keptCount} already stored.`;
+  }
+  hierSetStatus(msg);
+  document.getElementById('hierJsonInput').value = '';
+}
+
+function setActiveCompany(name) {
+  activeCompany  = name || null;
+  activeTemplate = null;   // reset template selection when switching company
+  const lbl = document.getElementById('hierActiveLabel');
+  lbl.innerHTML = name
+    ? `<span class="hier-active-badge">✔ ${name}</span>`
+    : '';
+  refreshHierUI();
+}
+
+function deleteCompany(name) {
+  if (!confirm(`Delete all hierarchy data for "${name}"?`)) return;
+  const stored = hierLoad();
+  delete stored[name];
+  hierSave(stored);
+  if (activeCompany === name) setActiveCompany(null);
+  else refreshHierUI();
+  hierSetStatus(`🗑 "${name}" deleted.`);
+}
+
+/* ── Tab switcher for hier panel ── */
+function toggleHierPanel() {
+  const body = document.getElementById('hierBody');
+  const lbl  = document.getElementById('hierToggleLabel');
+  body.classList.toggle('open');
+  lbl.textContent = body.classList.contains('open') ? '▲ collapse' : '▼ expand';
+}
+function switchHierTab(tab) {
+  ['parse','manual','gist','backup'].forEach(t => {
+    const btn   = document.getElementById('htab' + t.charAt(0).toUpperCase() + t.slice(1));
+    const panel = document.getElementById('htab' + t.charAt(0).toUpperCase() + t.slice(1) + 'Panel');
+    if (btn)   btn.classList.toggle('active', t === tab);
+    if (panel) panel.style.display = t === tab ? '' : 'none';
+  });
+}
+
+/* ── Company list UI ── */
+function refreshHierUI() {
+  const stored = hierLoad();
+  const names  = Object.keys(stored);
+  const list   = document.getElementById('hierCompaniesList');
+
+  if (names.length === 0) {
+    list.innerHTML = '<p style="font-size:12px;color:#888;margin:0;">No companies saved yet. Paste an API response above to get started.</p>';
+    return;
+  }
+
+  list.innerHTML = names.map(name => {
+    const companyData = stored[name];
+    // L3 entries: all keys except __assetTemplates
+    const l3Entries = Object.entries(companyData).filter(([k]) => k !== '__assetTemplates');
+    const tplMap    = companyData.__assetTemplates || {};
+    const isActive  = name === activeCompany;
+
+    const pillsHTML = l3Entries.map(([l3, data]) => {
+      const segs = (data.segments||[]).map(s=>s.name).join(', ');
+      return `<span class="hier-l3-pill" title="Segments: ${segs}">${l3}</span>`;
+    }).join('');
+
+    // Template section — single-select asset type, multi-select templates within it
+    let tplHTML = '';
+    const assetTypes = Object.keys(tplMap);
+    if (assetTypes.length > 0 && isActive) {
+      // Store tplMap on window so onclick handlers can look up by name safely (no JSON in attributes)
+      window._hierActiveTplMap = tplMap;
+
+      const rows = assetTypes.map(at => {
+        const allNames      = tplMap[at];
+        const isActiveType  = activeTemplate && activeTemplate.assetType === at;
+        const selectedNames = isActiveType ? new Set(activeTemplate.templateNames) : new Set();
+        // Safe key: base64-ish via encodeURIComponent; but simpler — use data-at attr + delegated handler
+        const safeAt = at.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+
+        // Template pills — only show when this asset type is active
+        const pillsSection = isActiveType ? `
+          <div class="hier-template-radio-row" style="margin-top:4px;">
+            ${allNames.map(tplName => {
+              const sel     = selectedNames.has(tplName);
+              const safeTpl = tplName.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+              return `<label class="${sel?'selected':''}" onclick="toggleTemplate('${safeAt}','${safeTpl}')">
+                ${tplName}
+              </label>`;
+            }).join('')}
+          </div>` : '';
+
+        return `<div class="hier-asset-type-row">
+          <div class="hier-asset-type-name" style="cursor:pointer;display:flex;align-items:center;gap:6px;"
+               onclick="selectAssetType('${safeAt}')">
+            <span style="font-size:13px;">${isActiveType ? '▼' : '▶'}</span>
+            <span style="color:${isActiveType?'#2980b9':'#2c3e50'};font-weight:bold;">${at}</span>
+            <span style="font-size:10px;color:#888;">(${allNames.length} template${allNames.length!==1?'s':''})</span>
+            ${isActiveType ? `<span style="font-size:10px;background:#3498db;color:#fff;border-radius:8px;padding:1px 7px;">${selectedNames.size} selected</span>` : ''}
+          </div>
+          ${pillsSection}
+        </div>`;
+      }).join('');
+
+      const activeLabel = activeTemplate
+        ? `<span class="hier-active-template-badge">✔ ${activeTemplate.assetType} (${activeTemplate.templateNames.length})</span>`
+        : '<span style="font-size:11px;color:#888;margin-left:4px;">— none selected</span>';
+
+      tplHTML = `<div class="hier-template-section">
+        <div class="hier-template-label">Asset Template ${activeLabel}</div>
+        <div style="font-size:11px;color:#777;margin-bottom:6px;">Click an asset type to select it and all its templates · Click templates to toggle individually</div>
+        ${rows}
+        <button style="margin-top:5px;padding:3px 10px;border:none;border-radius:3px;background:#e0e0e0;cursor:pointer;font-size:11px;" onclick="selectTemplate(null,null,null)">✕ Clear selection</button>
+      </div>`;
+    } else if (assetTypes.length > 0 && !isActive) {
+      tplHTML = `<div style="font-size:11px;color:#888;margin-top:5px;">${assetTypes.length} asset type(s) with templates — activate company to select.</div>`;
+    }
+
+    return `
+      <div class="hier-company-card ${isActive?'active':''}">
+        <div style="flex:1;min-width:0;">
+          <div class="hier-company-name">${name}
+            <span style="font-size:11px;color:#888;font-weight:normal;margin-left:6px;">${l3Entries.length} region${l3Entries.length!==1?'s':''}</span>
+            ${isActive?'<span style="font-size:11px;color:#27ae60;font-weight:normal;margin-left:6px;">● active</span>':''}
+          </div>
+          <div class="hier-l3-pills" style="margin-top:5px;">${pillsHTML}</div>
+          ${tplHTML}
+        </div>
+        <div class="hier-company-actions">
+          <button class="hier-sm-btn use" onclick="setActiveCompany('${name.replace(/'/g,"\'")}')">
+            ${isActive ? '✔ Active' : 'Use for Generation'}
+          </button>
+          <button class="hier-sm-btn del" onclick="deleteCompany('${name.replace(/'/g,"\'")}')">🗑</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* Click an asset type header → select that type + ALL its templates */
+function selectAssetType(assetType) {
+  const allNames = (window._hierActiveTplMap || {})[assetType] || [];
+  if (activeTemplate && activeTemplate.assetType === assetType) {
+    // Already active → toggle off
+    activeTemplate = null;
+  } else {
+    activeTemplate = { assetType, templateNames: [...allNames] };
+  }
+  refreshHierUI();
+}
+
+/* Click an individual template pill → toggle within the active asset type */
+function toggleTemplate(assetType, templateName) {
+  const allNames = (window._hierActiveTplMap || {})[assetType] || [];
+  if (!activeTemplate || activeTemplate.assetType !== assetType) {
+    // Switch asset type — start with just this template
+    activeTemplate = { assetType, templateNames: [templateName] };
+  } else {
+    const set = new Set(activeTemplate.templateNames);
+    if (set.has(templateName)) {
+      set.delete(templateName);
+      if (set.size === 0) { activeTemplate = null; }
+      else                { activeTemplate.templateNames = [...set]; }
+    } else {
+      set.add(templateName);
+      activeTemplate.templateNames = [...set];
+    }
+  }
+  refreshHierUI();
+}
+
+/* Called from "Clear" button */
+function selectTemplate(company, assetType, templateName) {
+  if (!company) { activeTemplate = null; refreshHierUI(); }
+}
+
+/* Returns a template name for asset index i (cycles through selected templates) */
+function getActiveTemplateName(i=0) {
+  if (!activeTemplate || !activeTemplate.templateNames.length) return '';
+  return activeTemplate.templateNames[i % activeTemplate.templateNames.length];
+}
+
+/* Build hierarchy context for generation.
+   Returns flat array of {l3Name, seg} combos from the active company.
+   Segments CAN repeat across different l3Values — this is by design. */
+function getHierarchyContext() {
+  if (!activeCompany) return null;
+  const stored = hierLoad();
+  const data   = stored[activeCompany];
+  if (!data) return null;
+  // Exclude __assetTemplates meta key — only return actual l3 entries
+  const entries = Object.entries(data).filter(([k]) => k !== '__assetTemplates');
+  return entries.length ? entries : null;
+}
+
+
+/* ── Export / Import ── */
+function hierExportAll() {
+  const stored = hierLoad();
+  if (!Object.keys(stored).length) { hierSetStatus('⚠ Nothing to export yet.', false); return; }
+  const blob = new Blob([JSON.stringify(stored, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pipeline_hierarchy_backup.json';
+  a.click();
+  hierSetStatus('⬇ Exported all company hierarchy data.');
+}
+function hierImportFile(input) {
+  const file = input.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = e => {
+    try {
+      const incoming = JSON.parse(e.target.result);
+      const stored   = hierLoad();
+      let added = 0, skipped = 0;
+      Object.entries(incoming).forEach(([company, l3Map]) => {
+        if (!stored[company]) stored[company] = {};
+        Object.entries(l3Map).forEach(([l3, data]) => {
+          if (stored[company][l3]) { skipped++; }       // never overwrite existing segments
+          else { stored[company][l3] = data; added++; }
+        });
+      });
+      hierSave(stored);
+      refreshHierUI();
+      hierSetStatus(`✅ Import done. ${added} new entries added, ${skipped} existing kept.`);
+    } catch(err) { hierSetStatus('⚠ Could not parse file: '+err.message, false); }
+    input.value = '';
+  };
+  r.readAsText(file);
+}
+
+/* ── GitHub Gist Sync ── */
+async function gistPush() {
+  const token  = document.getElementById('gistToken').value.trim();
+  const gistId = document.getElementById('gistId').value.trim();
+  if (!token) { hierSetStatus('⚠ Enter your GitHub PAT first.', false); return; }
+  const stored  = hierLoad();
+  const content = JSON.stringify(stored, null, 2);
+  hierSetStatus('⏳ Saving to Gist…');
+  try {
+    const body = { description:'Pipeline Tool Hierarchy', public:false,
+      files:{'pipeline_hierarchy.json':{content}} };
+    const url  = gistId ? `https://api.github.com/gists/${gistId}` : 'https://api.github.com/gists';
+    const res  = await fetch(url, { method: gistId?'PATCH':'POST',
+      headers:{'Authorization':'token '+token,'Content-Type':'application/json'},
+      body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(`GitHub API error ${res.status}: ${await res.text()}`);
+    const json = await res.json();
+    document.getElementById('gistId').value = json.id;
+    // Persist token + gist ID locally for convenience
+    localStorage.setItem('pipelineGistId_v1',   json.id);
+    localStorage.setItem('pipelineGistToken_v1', token);
+    hierSetStatus(`✅ Saved to Gist! ID: ${json.id} — copy this ID for future syncs.`);
+  } catch(err) { hierSetStatus('⚠ Gist save failed: '+err.message, false); }
+}
+async function gistPull() {
+  const token  = document.getElementById('gistToken').value.trim();
+  const gistId = document.getElementById('gistId').value.trim();
+  if (!token)  { hierSetStatus('⚠ Enter your GitHub PAT first.', false); return; }
+  if (!gistId) { hierSetStatus('⚠ Enter a Gist ID to load from.', false); return; }
+  hierSetStatus('⏳ Loading from Gist…');
+  try {
+    const res  = await fetch(`https://api.github.com/gists/${gistId}`,
+      {headers:{'Authorization':'token '+token}});
+    if (!res.ok) throw new Error(`GitHub API error ${res.status}`);
+    const json    = await res.json();
+    const file    = json.files['pipeline_hierarchy.json'];
+    if (!file) throw new Error('"pipeline_hierarchy.json" not found in this Gist.');
+    const incoming = JSON.parse(file.content);
+    const stored   = hierLoad();
+    let added = 0, skipped = 0;
+    Object.entries(incoming).forEach(([company, l3Map]) => {
+      if (!stored[company]) stored[company] = {};
+      Object.entries(l3Map).forEach(([l3, data]) => {
+        if (stored[company][l3]) skipped++;
+        else { stored[company][l3] = data; added++; }
+      });
+    });
+    hierSave(stored);
+    refreshHierUI();
+    hierSetStatus(`✅ Loaded from Gist. ${added} new entries added, ${skipped} existing kept.`);
+  } catch(err) { hierSetStatus('⚠ Gist load failed: '+err.message, false); }
+}
+
+/* Restore saved gist credentials on page load */
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    refreshHierUI();
+    const savedId    = localStorage.getItem('pipelineGistId_v1');
+    const savedToken = localStorage.getItem('pipelineGistToken_v1');
+    if (savedId)    document.getElementById('gistId').value    = savedId;
+    if (savedToken) document.getElementById('gistToken').value = savedToken;
+  }, 100);
+});
+
+/* ═══════════════════════════════════════════════════
+   MANUAL HIERARCHY ENTRY
+   Build Level3 + Segment rows in the UI, then save
+   them into the same localStorage hierarchy store.
+═══════════════════════════════════════════════════ */
+let manualL3Count = 0;
+
+function addManualL3Block(prefillL3='', prefillSegs=[]) {
+  const container = document.getElementById('manualL3Container');
+  const id = ++manualL3Count;
+
+  const segsHtml = (prefillSegs.length ? prefillSegs : [{name:'',type:'Mainline'}])
+    .map((s,si) => manualSegRowHtml(id, si, s.name, s.type)).join('');
+
+  const block = document.createElement('div');
+  block.className = 'manual-l3-block';
+  block.id = `manualL3Block_${id}`;
+  block.innerHTML = `
+    <button class="manual-rm-l3" onclick="document.getElementById('manualL3Block_${id}').remove()" title="Remove this Level3">✕</button>
+    <div class="manual-l3-header">
+      <label style="font-size:12px;font-weight:bold;white-space:nowrap;margin:0;">Level 3 Value:</label>
+      <input class="manual-l3-name" type="text" id="manualL3Name_${id}" value="${prefillL3}" placeholder="e.g. South-East"/>
+    </div>
+    <div id="manualSegs_${id}">${segsHtml}</div>
+    <button class="manual-add-seg" onclick="addManualSegRow(${id})">＋ Add Segment</button>
+  `;
+  container.appendChild(block);
+}
+
+function manualSegRowHtml(l3id, segIdx, name='', type='Mainline') {
+  const uid = `${l3id}_${segIdx}_${Date.now()}`;
+  return `
+    <div class="manual-seg-row" id="manualSegRow_${uid}">
+      <input class="manual-seg-input" type="text" value="${name}" placeholder="Segment name e.g. Seg- South-East 1"/>
+      <select class="manual-seg-type">
+        <option value="Mainline" ${type==='Mainline'?'selected':''}>Mainline</option>
+        <option value="Spur"     ${type==='Spur'?'selected':''}>Spur</option>
+      </select>
+      <button class="manual-rm-btn" onclick="document.getElementById('manualSegRow_${uid}').remove()" title="Remove">✕</button>
+    </div>`;
+}
+
+function addManualSegRow(l3id) {
+  const segsDiv = document.getElementById(`manualSegs_${l3id}`);
+  const idx     = segsDiv.querySelectorAll('.manual-seg-row').length;
+  const tmp     = document.createElement('div');
+  tmp.innerHTML = manualSegRowHtml(l3id, idx);
+  segsDiv.appendChild(tmp.firstElementChild);
+}
+
+function clearManualForm() {
+  document.getElementById('manualL3Container').innerHTML = '';
+  manualL3Count = 0;
+  document.getElementById('manualStatus').textContent = '';
+}
+
+function setManualStatus(msg, ok=true) {
+  const el = document.getElementById('manualStatus');
+  el.style.color   = ok ? '#27ae60' : '#e74c3c';
+  el.textContent   = msg;
+}
+
+function saveManualHierarchy() {
+  const company = document.getElementById('manualCompanyInput').value.trim();
+  if (!company) { setManualStatus('⚠ Enter a company name first.', false); return; }
+
+  const blocks = document.getElementById('manualL3Container').querySelectorAll('.manual-l3-block');
+  if (!blocks.length) { setManualStatus('⚠ Add at least one Level 3 Value block.', false); return; }
+
+  const stored   = hierLoad();
+  const existing = stored[company] || {};
+  let added = 0, updated = 0, skipped = 0;
+
+  blocks.forEach(block => {
+    const l3Input = block.querySelector('.manual-l3-name');
+    const l3Name  = l3Input ? l3Input.value.trim() : '';
+    if (!l3Name) { skipped++; return; }
+
+    const segRows = block.querySelectorAll('.manual-seg-row');
+    const segments = [];
+    segRows.forEach(row => {
+      const nameIn = row.querySelector('.manual-seg-input');
+      const typeIn = row.querySelector('.manual-seg-type');
+      const n = nameIn ? nameIn.value.trim() : '';
+      const t = typeIn ? typeIn.value : 'Mainline';
+      if (n) segments.push({ name: n, type: t });
+    });
+
+    if (!segments.length) { skipped++; return; }
+
+    if (existing[l3Name]) {
+      // Merge: add only new segment names, keep existing
+      const existingNames = new Set(existing[l3Name].segments.map(s=>s.name));
+      segments.forEach(s => { if (!existingNames.has(s.name)) existing[l3Name].segments.push(s); });
+      updated++;
+    } else {
+      existing[l3Name] = { level1Value: company, level2Value: '', segments };
+      added++;
+    }
+  });
+
+  stored[company] = existing;
+  hierSave(stored);
+  refreshHierUI();
+
+  const msg = `✅ Saved to "${company}". ${added} new Level3 value${added!==1?'s':''} added, ${updated} updated${skipped?' ('+skipped+' blank skipped)':''}.`;
+  setManualStatus(msg);
+}
+
+
 </script>
 </body>
 </html>
