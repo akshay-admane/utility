@@ -234,6 +234,7 @@
     border-color: var(--accent);
   }
   .cutoff-hint { font-size: 10px; color: var(--muted); width: 100%; text-align: center; margin-top: 2px; }
+  .date-range-arrow { color: var(--muted); font-size: 13px; }
 
   .cutoff-control {
     display: flex;
@@ -472,9 +473,12 @@
   <!-- Upload -->
   <div id="uploadSection">
     <div class="cutoff-bar">
-      <label for="preCutoffDateInput">Survey dates before</label>
-      <input type="date" id="preCutoffDateInput">
-      <div class="cutoff-hint">All generated measurement dates will fall strictly before this date. Leave blank to auto-use the survey's due date (or today, if none).</div>
+      <label for="preFromDateInput">From</label>
+      <input type="date" id="preFromDateInput">
+      <span class="date-range-arrow">→</span>
+      <label for="preToDateInput">To</label>
+      <input type="date" id="preToDateInput">
+      <div class="cutoff-hint">Generated measurement dates will be randomly spread across this range (inclusive). Leave blank to auto-use the 90 days up to the survey's due date (or today).</div>
     </div>
     <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
       <input type="file" id="fileInput" accept=".mtx,.json">
@@ -504,8 +508,11 @@
       </div>
       <div class="actions" id="actionsBar">
         <div class="cutoff-control" id="cutoffControlWrap">
-          <label for="cutoffDateInput">Dates before</label>
-          <input type="date" id="cutoffDateInput">
+          <label for="fromDateInput">From</label>
+          <input type="date" id="fromDateInput">
+          <span class="date-range-arrow">→</span>
+          <label for="toDateInput">To</label>
+          <input type="date" id="toDateInput">
         </div>
         <button class="btn btn-primary" id="btnDownload" onclick="downloadOutput()">⬇ Download</button>
         <button class="btn btn-regen" id="btnRegen" onclick="regenerate()">↺ Regenerate Random</button>
@@ -524,7 +531,8 @@ let surveyData = null;
 let filledData = null;
 let originalFileName = '';
 let forceThresholdMet = false;
-let currentCutoffDate = null; // Date object — all generated measurementDates will be strictly before this
+let currentFromDate = null; // Date object — start of the generated measurementDate range (inclusive)
+let currentToDate = null;   // Date object — end of the generated measurementDate range (inclusive)
 let applyEditRequest = false; // Auto Fill always runs; this is an OPTIONAL extra layer on top of it
 let lastEditedAssetNames = new Set(); // asset names touched by the edit-request layer (for UI tags)
 
@@ -577,7 +585,9 @@ function handleFile(file) {
     try {
       surveyData = JSON.parse(e.target.result);
       forceThresholdMet = false;
-      currentCutoffDate = resolveInitialCutoff(surveyData);
+      const range = resolveInitialRange(surveyData);
+      currentFromDate = range.from;
+      currentToDate = range.to;
       runProcessing();
     } catch {
       showToast('Could not parse file — make sure it is a valid .mtx JSON file', 'error');
@@ -604,8 +614,12 @@ function runProcessing() {
   }
 
   setTimeout(() => {
-    if (!currentCutoffDate) currentCutoffDate = resolveInitialCutoff(surveyData);
-    let result = autoFill(surveyData, forceThresholdMet, currentCutoffDate);
+    if (!currentFromDate || !currentToDate) {
+      const range = resolveInitialRange(surveyData);
+      currentFromDate = range.from;
+      currentToDate = range.to;
+    }
+    let result = autoFill(surveyData, forceThresholdMet, currentFromDate, currentToDate);
     if (applyEditRequest) {
       result = generateEditRequest(result, getMetadataEditCount());
     }
@@ -621,24 +635,46 @@ function getMetadataEditCount() {
   return (isNaN(v) || v < 0) ? 0 : v;
 }
 
-// ── Cutoff date helpers ────────────────────────────────────────────────────────
-// Decide the cutoff date to use for the very first autofill pass:
-// 1. If the user typed a date into the pre-upload field, use that.
-// 2. Otherwise fall back to the survey's dueDate (date part only).
-// 3. Otherwise fall back to today.
-function resolveInitialCutoff(data) {
-  const preInput = document.getElementById('preCutoffDateInput');
-  if (preInput && preInput.value) {
-    return dateInputValueToDate(preInput.value);
-  }
-  if (data && data.dueDate) {
+// ── Date range helpers ───────────────────────────────────────────────────────
+// Decide the {from, to} range to use for the very first autofill pass:
+// 1. If the user typed dates into the pre-upload fields, use those.
+// 2. Otherwise "to" falls back to the survey's dueDate (date part only), then today.
+// 3. "from" falls back to 90 days before "to" if left blank.
+function resolveInitialRange(data) {
+  const preFrom = document.getElementById('preFromDateInput');
+  const preTo = document.getElementById('preToDateInput');
+
+  let toDate;
+  if (preTo && preTo.value) {
+    toDate = dateInputValueToDate(preTo.value);
+  } else if (data && data.dueDate) {
     const d = new Date(data.dueDate);
-    if (!isNaN(d.getTime())) {
-      return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-    }
+    toDate = !isNaN(d.getTime())
+      ? new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+      : todayUTC();
+  } else {
+    toDate = todayUTC();
   }
-  const today = new Date();
-  return new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+
+  let fromDate;
+  if (preFrom && preFrom.value) {
+    fromDate = dateInputValueToDate(preFrom.value);
+  } else {
+    fromDate = new Date(toDate.getTime() - 90 * 24 * 60 * 60 * 1000);
+  }
+
+  return normalizeRange(fromDate, toDate);
+}
+
+// Today at UTC midnight.
+function todayUTC() {
+  const t = new Date();
+  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate()));
+}
+
+// Ensures from <= to, swapping if the user entered them backwards.
+function normalizeRange(from, to) {
+  return (from.getTime() > to.getTime()) ? { from: to, to: from } : { from, to };
 }
 
 // Parses a <input type="date"> value ("YYYY-MM-DD") as a UTC midnight Date.
@@ -652,29 +688,31 @@ function dateToInputValue(date) {
   return date.toISOString().slice(0, 10);
 }
 
-// Reads whatever cutoff date is currently set in the result screen's control
-// (falls back to currentCutoffDate, then today).
-function getCutoffFromInput() {
-  const input = document.getElementById('cutoffDateInput');
-  if (input && input.value) {
-    return dateInputValueToDate(input.value);
-  }
-  return currentCutoffDate || new Date();
+// Reads whatever From/To range is currently set in the result screen's
+// controls (falls back to currentFromDate/currentToDate, then today).
+function getRangeFromInputs() {
+  const fromInput = document.getElementById('fromDateInput');
+  const toInput = document.getElementById('toDateInput');
+  const from = (fromInput && fromInput.value) ? dateInputValueToDate(fromInput.value) : (currentFromDate || todayUTC());
+  const to = (toInput && toInput.value) ? dateInputValueToDate(toInput.value) : (currentToDate || todayUTC());
+  return normalizeRange(from, to);
 }
 
-// Generates a random Date strictly before `cutoff`, spread across the
-// `daysBack` days preceding it, so measurement dates for a survey look
-// realistically staggered rather than all identical.
-function randomDateBefore(cutoff, daysBack = 90) {
-  const cutoffTime = cutoff.getTime();
-  const rangeMs = daysBack * 24 * 60 * 60 * 1000;
-  const minOffsetMs = 60 * 1000; // at least 1 minute before cutoff, guarantees strictly-before
-  const offset = minOffsetMs + Math.floor(Math.random() * Math.max(rangeMs - minOffsetMs, minOffsetMs));
-  return new Date(cutoffTime - offset);
+// Generates a random Date anywhere within [from, to], inclusive of the
+// entire "to" day, so measurement dates for a survey look realistically
+// spread across the chosen window rather than clustered at one end.
+function randomDateInRange(from, to) {
+  const fromTime = from.getTime();
+  // Extend to the very end of the "to" day so that date is fully included.
+  const toTime = to.getTime() + (24 * 60 * 60 * 1000) - 1000;
+  if (toTime <= fromTime) return new Date(fromTime);
+  const span = toTime - fromTime;
+  const offset = Math.floor(Math.random() * span);
+  return new Date(fromTime + offset);
 }
 
 // ── Auto-fill logic ───────────────────────────────────────────────────────────
-function autoFill(data, forceAllMet = false, cutoffDate = new Date()) {
+function autoFill(data, forceAllMet = false, fromDate = todayUTC(), toDate = new Date()) {
   const output = JSON.parse(JSON.stringify(data));
 
   output.assets.forEach(asset => {
@@ -689,7 +727,7 @@ function autoFill(data, forceAllMet = false, cutoffDate = new Date()) {
     asset.assetMeasurementCriterias.forEach(c => {
       const val = generateValue(c, forceAllMet);
       c.measurementValue = val;
-      c.measurementDate = randomDateBefore(cutoffDate).toISOString();
+      c.measurementDate = randomDateInRange(fromDate, toDate).toISOString();
       c.measurementStatus = computeStatus(c, val);
     });
   });
@@ -1103,11 +1141,11 @@ function showResult(data) {
     `;
   }
 
-  // Keep the cutoff-date control on the result screen in sync with whatever cutoff was just used
-  const cutoffInput = document.getElementById('cutoffDateInput');
-  if (cutoffInput && currentCutoffDate) {
-    cutoffInput.value = dateToInputValue(currentCutoffDate);
-  }
+  // Keep the date-range controls on the result screen in sync with whatever range was just used
+  const fromInputSync = document.getElementById('fromDateInput');
+  const toInputSync = document.getElementById('toDateInput');
+  if (fromInputSync && currentFromDate) fromInputSync.value = dateToInputValue(currentFromDate);
+  if (toInputSync && currentToDate) toInputSync.value = dateToInputValue(currentToDate);
 
   // Assets
   const container = document.getElementById('assetsOutput');
@@ -1217,10 +1255,12 @@ function downloadOutput() {
 
 function regenerate() {
   if (!surveyData) return;
-  currentCutoffDate = getCutoffFromInput();
+  const range = getRangeFromInputs();
+  currentFromDate = range.from;
+  currentToDate = range.to;
   showProcessing();
   setTimeout(() => {
-    let result = autoFill(surveyData, forceThresholdMet, currentCutoffDate);
+    let result = autoFill(surveyData, forceThresholdMet, currentFromDate, currentToDate);
     if (applyEditRequest) result = generateEditRequest(result, getMetadataEditCount());
     filledData = result;
     showResult(filledData);
@@ -1231,10 +1271,12 @@ function regenerate() {
 function makeAllThresholdMet() {
   if (!surveyData) return;
   forceThresholdMet = true;
-  currentCutoffDate = getCutoffFromInput();
+  const range = getRangeFromInputs();
+  currentFromDate = range.from;
+  currentToDate = range.to;
   showProcessing();
   setTimeout(() => {
-    let result = autoFill(surveyData, true, currentCutoffDate);
+    let result = autoFill(surveyData, true, currentFromDate, currentToDate);
     if (applyEditRequest) result = generateEditRequest(result, getMetadataEditCount());
     filledData = result;
     showResult(filledData);
@@ -1245,7 +1287,8 @@ function makeAllThresholdMet() {
 function resetTool() {
   surveyData = null;
   filledData = null;
-  currentCutoffDate = null;
+  currentFromDate = null;
+  currentToDate = null;
   forceThresholdMet = false;
   lastEditedAssetNames = new Set();
   document.getElementById('uploadSection').style.display = 'block';
