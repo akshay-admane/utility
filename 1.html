@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>CSV Tool-2</title>
+<title>Pipeline Asset Import Tool</title>
 
 <!-- Leaflet (much lighter than OpenLayers) -->
 <link  rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -246,6 +246,9 @@ th{background:#f0f0f0;}
       <label for="assetSpacing">Distance between assets (km): <span class="help">(min 0.1)</span></label>
       <input type="number" id="assetSpacing" min="0.1" step="0.1" value="0.5" required inputmode="decimal" oninput="updateLiveCounter()"/>
 
+      <label for="assetStartNum" style="margin-top:10px;">Asset start number: <span class="help">(e.g. 10001 if continuing from a previous batch)</span></label>
+      <input type="number" id="assetStartNum" min="1" step="1" value="1" style="max-width:160px;" inputmode="numeric"/>
+
       <div style="margin-top:12px;display:flex;align-items:center;gap:10px;">
         <span style="font-size:13px;font-weight:bold;">Spatial Reference 2 — whole number only?</span>
         <input type="checkbox" id="sr2IsNumber" onchange="document.getElementById('sr2Hint').textContent=this.checked?'On — whole number':'Off — ESN / decimal'"/>
@@ -274,7 +277,15 @@ th{background:#f0f0f0;}
         </div>
       </div>
 
-      <button type="submit" class="btn" id="generateBtn" style="margin-top:14px;">⚙ Generate Asset &amp; Inspection Records</button>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:10px;">
+        <label class="toggle-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+          <input type="checkbox" id="assetsOnlyToggle" style="width:16px;height:16px;cursor:pointer;"
+                 onchange="document.getElementById('generateBtn').textContent=this.checked?'⚙ Generate Asset Records Only':'⚙ Generate Asset &amp; Inspection Records'"/>
+          <span>Assets only — skip inspection records</span>
+          <span style="font-size:11px;color:#888;">(use for large batches)</span>
+        </label>
+      </div>
+      <button type="submit" class="btn" id="generateBtn" style="margin-top:10px;">⚙ Generate Asset &amp; Inspection Records</button>
     </form>
 
     <div class="map-toolbar">
@@ -294,24 +305,7 @@ th{background:#f0f0f0;}
       <label for="existingAssetFile">Upload Existing Asset File (.xlsx):</label>
       <input type="file" id="existingAssetFile" accept=".xlsx" required/>
       <div id="assetReadStatus" style="margin-top:6px;font-size:13px;"></div>
-      <div style="margin-top:12px;">
-        <label for="inspChunkSel2" style="margin-top:0;font-size:13px;">Inspection records per file:</label>
-        <select id="inspChunkSel2" style="display:block;margin-top:4px;padding:6px 10px;border:1px solid #ccc;border-radius:3px;font-size:13px;min-width:200px;">
-          <option value="0">Single file — all in one</option>
-          <option value="1000">1,000 per file</option>
-          <option value="3000">3,000 per file</option>
-          <option value="10000" selected>10,000 per file</option>
-        </select>
-      </div>
-      <div style="margin-top:12px;">
-        <label for="yearsSel2" style="margin-top:0;font-size:13px;">Number of years:</label>
-        <select id="yearsSel2" style="display:block;margin-top:4px;padding:6px 10px;border:1px solid #ccc;border-radius:3px;font-size:13px;min-width:200px;">
-          <option value="3">3 years</option>
-          <option value="5">5 years</option>
-          <option value="10" selected>10 years</option>
-        </select>
-      </div>
-      <button type="submit" class="btn orange" style="margin-top:14px">⚙ Generate Inspection Records</button>
+      <button type="submit" class="btn orange" style="margin-top:12px">⚙ Generate Inspection Records</button>
     </form>
   </div>
 
@@ -422,11 +416,11 @@ function generateSpatialRef(colName, idx, spacingKm) {
   }
   if (/\(km\)/i.test(colName)) {
     const v = idx * spacingKm;
-        return v===0 ? '0' : v.toFixed(3);
+    return v===0 ? '0' : v.toFixed(randInt(1,3));
   }
   if (/\(mi\)/i.test(colName)) {
     const v = idx * spacingKm * 0.621371;
-    return v===0 ? '0' : v.toFixed(3);
+    return v===0 ? '0' : v.toFixed(randInt(1,3));
   }
   return (idx * spacingKm).toFixed(3);
 }
@@ -457,16 +451,11 @@ const MONTH_NAMES = ["January","February","March","April","May","June",
   "July","August","September","October","November","December"];
 
 function buildSurveyDates(numYears) {
-  // Each year is fixed (current year going back numYears), but month and day are random per year
-  const today      = new Date();
-  const latestYear = today.getFullYear() - 1;
-  return Array.from({length: numYears}, (_, i) => {
-    const year  = latestYear - (numYears - 1 - i);
-    const month = randInt(0, 11);           // random month 0-11
-    const maxDay = new Date(year, month+1, 0).getDate();
-    const day   = randInt(1, maxDay);       // random valid day for that month
-    return new Date(year, month, day);
-  });
+  const today = new Date();
+  const latest = addDays(addMonths(today, -randInt(1,15)), randInt(-15,15));
+  const dates  = [latest];
+  for (let i=1; i<numYears; i++) dates.push(addDays(addMonths(dates[dates.length-1],-12), randInt(-30,30)));
+  return dates.reverse();
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1064,7 +1053,8 @@ async function generateFromHeader(header, assetType, spacingKm, generateBtn) {
       const combos = hierCombos || FALLBACK_SEGS;
 
       for (let i=0; i<points.length; i++) {
-        const assetName = generateAssetName(assetType, today, i);
+        const startNum  = (parseInt(document.getElementById('assetStartNum').value) || 1) - 1;
+        const assetName = generateAssetName(assetType, today, i + startNum);
         // Cycle through hierarchy combos (l3 × segment)
         const combo   = combos[i % combos.length];
         const segment = combo.seg.name;
@@ -1159,57 +1149,83 @@ async function generateFromHeader(header, assetType, spacingKm, generateBtn) {
         }
       }
 
-      /* ── INSPECTION ROWS ── */
-      // Build inspection header dynamically from the reference file header
-      const inspMeasCols = extractMeasCols(header);
-      const inspHeader   = buildInspHeader(header);
+      const assetsOnly = document.getElementById('assetsOnlyToggle').checked;
 
-      const YEARS=10, surveyDates=buildSurveyDates(YEARS);
-      const total=YEARS*assets.length;
-      const inspRows=[]; let cnt=0;
+      /* ── INSPECTION ROWS (skipped if Assets Only toggle is on) ── */
+      let inspHeader = [], inspRows = [];
 
-      // Exception rule: 50% assets become exceptions, alternating which 50% each year.
-      // Year 0 → even-index assets are exceptions; Year 1 → odd-index; Year 2 → even; etc.
-      // Exception = first measurement column is left blank → triggers "Required and not collected".
+      if (!assetsOnly) {
+        const inspMeasCols = extractMeasCols(header);
+        inspHeader   = buildInspHeader(header);
 
-      for (let yr=0; yr<YEARS; yr++) {
-        const sd=surveyDates[yr];
-        const sn=`${pick(SURVEY_PFX)}-${sd.getFullYear()}`;
-        const tech=pick(TECH_NAMES);
-        const latest=yr===YEARS-1;
+        const YEARS=10, surveyDates=buildSurveyDates(YEARS);
+        const total=YEARS*assets.length;
+        let cnt=0;
 
-        for (let ai=0; ai<assets.length; ai++) {
-          const a         = assets[ai];
-          const isExcep   = (ai + yr) % 2 === 0;   // alternates each year
-          const ir = generateCPReadings(a.couponM2, a.shuntFactor, true);
-          const measVals  = inspMeasCols.map((col, ci) =>
-            (isExcep && ci % 2 === yr % 2) ? '' : getMeasVal(col, ir)  // alternate blank cols per year
-          );
-          inspRows.push([
-            a.segment, a.assetName,
-            ...measVals,
-            formatDate(sd), sn, tech,
-            generateInspComment(a.segment,a.assetName,sd.getFullYear(),latest,!isExcep)
-          ]);
-          cnt++;
-          if(cnt%2000===0){
-            showProgress(40+(cnt/total)*45,`Inspection ${cnt.toLocaleString()} of ${total.toLocaleString()}…`);
-            await yieldUI();
+        // Exception rule: 50% assets become exceptions, alternating which 50% each year.
+        for (let yr=0; yr<YEARS; yr++) {
+          const sd=surveyDates[yr];
+          const sn=`${pick(SURVEY_PFX)}-${sd.getFullYear()}`;
+          const tech=pick(TECH_NAMES);
+          const latest=yr===YEARS-1;
+
+          for (let ai=0; ai<assets.length; ai++) {
+            const a       = assets[ai];
+            const isExcep = (ai + yr) % 2 === 0;
+            const ir = generateCPReadings(a.couponM2, a.shuntFactor, true);
+            inspRows.push([
+              a.segment, a.assetName,
+              ...inspMeasCols.map((col,ci) => (isExcep && ci % 2 === yr % 2) ? '' : getMeasVal(col, ir)),
+              formatDate(sd), sn, tech,
+              generateInspComment(a.segment,a.assetName,sd.getFullYear(),latest,!isExcep)
+            ]);
+            cnt++;
+            if(cnt%2000===0){
+              showProgress(40+(cnt/total)*45,`Inspection ${cnt.toLocaleString()} of ${total.toLocaleString()}…`);
+              await yieldUI();
+            }
           }
         }
       }
 
       showProgress(88,'Building previews…'); await yieldUI();
-      showPreviewTable('previewTable',    header,      assetRows.slice(0,10));
-      showPreviewTable('previewInspTable',inspHeader,  inspRows.slice(0,10));
+      showPreviewTable('previewTable', header, assetRows.slice(0,10));
       document.getElementById('assetBadge').textContent=`${assetRows.length.toLocaleString()} assets`;
-      document.getElementById('inspBadge').textContent =`${inspRows.length.toLocaleString()} records`;
+
+      if (!assetsOnly) {
+        showPreviewTable('previewInspTable', inspHeader, inspRows.slice(0,10));
+        document.getElementById('inspBadge').textContent=`${inspRows.length.toLocaleString()} records`;
+      } else {
+        document.getElementById('inspBadge').textContent='—';
+      }
 
       clearDownloads();
       showProgress(92,'Writing files…'); await yieldUI();
-      await generateChunkedDownloads(header, assetRows, inspHeader, inspRows, assetType, YEARS, assets);
-      showProgress(100,'Done!'); await yieldUI(); hideProgress();
-      setStatus(`✅ Generated ${assetRows.length.toLocaleString()} assets and ${inspRows.length.toLocaleString()} inspection records (${YEARS} annual surveys). Download links ready below.`);
+
+      if (assetsOnly) {
+        // Asset file only — one or more chunks, no inspection files
+        const assetChunk = parseInt(document.getElementById('assetChunkSel').value) || 0;
+        const assetCs    = assetChunk > 0 ? assetChunk : assetRows.length;
+        const totalFiles = Math.ceil(assetRows.length / assetCs);
+        document.getElementById('downloadContainer').style.display = 'block';
+        const dlRow = document.getElementById('downloadRow');
+        for (let fc=0; fc<totalFiles; fc++) {
+          const s = fc*assetCs, e = Math.min(s+assetCs, assetRows.length);
+          const fn  = totalFiles>1 ? `${assetType}_Asset_Import_${fc+1}.xlsx` : `${assetType}_Asset_Import.xlsx`;
+          const lbl = totalFiles>1
+            ? `⬇ Asset File ${fc+1}/${totalFiles}  (rows ${(s+1).toLocaleString()}–${e.toLocaleString()})`
+            : `⬇ Asset Import File  (${assetRows.length.toLocaleString()} assets)`;
+          dlRow.appendChild(makeDownloadLink(xlsxBlob([header,...assetRows.slice(s,e)],'Assets'), fn, lbl, '#27ae60'));
+          showProgress(92+((fc+1)/totalFiles)*7, `Writing file ${fc+1}/${totalFiles}…`);
+          await yieldUI();
+        }
+        showProgress(100,'Done!'); await yieldUI(); hideProgress();
+        setStatus(`✅ Generated ${assetRows.length.toLocaleString()} assets (inspection skipped). Download links ready below.`);
+      } else {
+        await generateChunkedDownloads(header, assetRows, inspHeader, inspRows, assetType, YEARS, assets);
+        showProgress(100,'Done!'); await yieldUI(); hideProgress();
+        setStatus(`✅ Generated ${assetRows.length.toLocaleString()} assets and ${inspRows.length.toLocaleString()} inspection records (${YEARS} annual surveys). Download links ready below.`);
+      }
 
     } catch(err) {
       alert('Error: '+err.message); hideProgress();
@@ -1243,8 +1259,6 @@ document.getElementById('existingAssetFile').addEventListener('change', function
 /* ═══════════════════════════════════════════════════
    MODE 2 — GENERATE INSPECTIONS
 ═══════════════════════════════════════════════════ */
-
-
 document.getElementById('inspOnlyForm').addEventListener('submit', async function(e){
   e.preventDefault();
   const fileInput=document.getElementById('existingAssetFile');
@@ -1263,7 +1277,7 @@ document.getElementById('inspOnlyForm').addEventListener('submit', async functio
       const sc=hdr.findIndex(h=>/Segment\*/i.test(h));
       if(nc===-1||sc===-1) return alert('The file must contain "Asset Name*" and "Segment*" columns.');
 
-      // Try to read Portable Shunt Factor, Coupon Size and Effective Native (Depol) from the uploaded asset file
+      // Try to read Portable Shunt Factor and Coupon Size from the uploaded asset file
       const sfColIdx  = hdr.findIndex(h => /Portable Shunt Factor|Shunt Factor/i.test(h));
       const csColIdx  = hdr.findIndex(h => /Coupon Size/i.test(h));
 
@@ -1289,43 +1303,30 @@ document.getElementById('inspOnlyForm').addEventListener('submit', async functio
       const inspMeasCols2 = extractMeasCols(hdr);
       const inspHeader2   = buildInspHeader(hdr);
 
-      const YEARS=parseInt(document.getElementById('yearsSel2').value)||10, surveyDates=buildSurveyDates(YEARS);
+      const YEARS=10, surveyDates=buildSurveyDates(YEARS);
       const total=YEARS*assets.length;
       const inspRows=[]; let cnt=0;
 
-      // Exception rule: 50% assets become exceptions, alternating which 50% each year.
-      // Year 0 → even-index assets are exceptions; Year 1 → odd-index; Year 2 → even; etc.
-      // Exception = first measurement column is left blank → triggers "Required and not collected".
+      // 50/50 rule: pre-assign each asset as pass or fail
+      const passFlag2 = assets.map((_,idx) => idx % 2 === 0);
 
       showProgress(2,`Generating ${total.toLocaleString()} inspection records…`); await yieldUI();
 
       for(let yr=0;yr<YEARS;yr++){
         const sd=surveyDates[yr];
-        const surveyYear=sd.getFullYear();
-        const sn=`${pick(SURVEY_PFX)}-${surveyYear}`;
+        const sn=`${pick(SURVEY_PFX)}-${sd.getFullYear()}`;
         const tech=pick(TECH_NAMES);
         const latest=yr===YEARS-1;
 
         for(let ai=0;ai<assets.length;ai++){
-          const a       = assets[ai];
-          const isExcep = (ai + yr) % 2 === 0;   // alternates each year
-          const ir2     = generateCPReadings(a.couponM2, a.shuntFactor, true);
-
-          // Random month/day per asset — year stays fixed to the survey year
-          const assetMonth  = randInt(0,11);
-          const assetMaxDay = new Date(surveyYear, assetMonth+1, 0).getDate();
-          const assetDay    = randInt(1, assetMaxDay);
-          const assetDate   = new Date(surveyYear, assetMonth, assetDay);
-
-          const measVals = inspMeasCols2.map((col, ci) =>
-            (isExcep && ci % 2 === yr % 2) ? '' : getMeasVal(col, ir2)  // alternate blank cols each year
-          );
-
+          const a    = assets[ai];
+          const pass = passFlag2[ai];
+          const ir2  = generateCPReadings(a.couponM2, a.shuntFactor, pass);
           inspRows.push([
-            a.segment, a.assetName,
-            ...measVals,
-            formatDate(assetDate), sn, tech,
-            generateInspComment(a.segment, a.assetName, surveyYear, latest, !isExcep)
+            a.segment,a.assetName,
+            ...inspMeasCols2.map(col=>getMeasVal(col, ir2)),
+            formatDate(sd),sn,tech,
+            generateInspComment(a.segment,a.assetName,sd.getFullYear(),latest,pass)
           ]);
           cnt++;
           if(cnt%2000===0){showProgress(2+(cnt/total)*85,`${cnt.toLocaleString()} of ${total.toLocaleString()}…`);await yieldUI();}
@@ -1333,44 +1334,18 @@ document.getElementById('inspOnlyForm').addEventListener('submit', async functio
       }
 
       showProgress(90,'Writing XLSX…'); await yieldUI();
-      // Preview: one row per survey year so different dates/years are visible
-      const previewRows2 = Array.from({length:YEARS},(_,yr)=>inspRows[yr*assets.length]).filter(Boolean);
-      showPreviewTable('previewInspTable',inspHeader2,previewRows2);
+      showPreviewTable('previewInspTable',inspHeader2,inspRows.slice(0,10));
       document.getElementById('inspBadge').textContent=`${inspRows.length.toLocaleString()} records (${YEARS} yrs × ${assets.length.toLocaleString()} assets)`;
       switchTab('inspection');
-
-      // ── Chunked downloads for Mode 2 ────────────────────────────────────────
-      const inspChunk2 = parseInt(document.getElementById('inspChunkSel2').value) || 0;
-      const inspCs2    = inspChunk2 > 0 ? inspChunk2 : inspRows.length;
-      const totalFiles = Math.ceil(inspRows.length / inspCs2);
-
+      // Mode 2: single inspection file (no asset file being generated, no chunking)
       clearDownloads();
+      const inspBlob2 = xlsxBlob([inspHeader2,...inspRows],'Inspections');
+      const m2Link = makeDownloadLink(inspBlob2,`${prefix}_Inspection_Import.xlsx`,
+        `⬇ Inspection Import File  (${inspRows.length.toLocaleString()} records)`,'#e67e22');
+      document.getElementById('downloadRow').appendChild(m2Link);
       document.getElementById('downloadContainer').style.display = 'block';
-      const dlRow = document.getElementById('downloadRow');
-
-      for (let fc = 0; fc < totalFiles; fc++) {
-        const sliceStart = fc * inspCs2;
-        const sliceEnd   = Math.min(sliceStart + inspCs2, inspRows.length);
-        const slice      = inspRows.slice(sliceStart, sliceEnd);
-        const fn         = totalFiles > 1
-          ? `${prefix}_Inspection_Import_${fc+1}.xlsx`
-          : `${prefix}_Inspection_Import.xlsx`;
-        const lbl        = totalFiles > 1
-          ? `⬇ Inspection File ${fc+1}/${totalFiles}  (${slice.length.toLocaleString()} records)`
-          : `⬇ Inspection Import File  (${slice.length.toLocaleString()} records)`;
-        dlRow.appendChild(makeDownloadLink(xlsxBlob([inspHeader2,...slice],'Inspections'), fn, lbl, '#e67e22'));
-        if (fc < totalFiles-1) {
-          const sep = document.createElement('div');
-          sep.style.cssText = 'width:100%;height:1px;background:#e0e0e0;margin:4px 0;';
-          dlRow.appendChild(sep);
-        }
-        showProgress(90 + ((fc+1)/totalFiles)*9, `Writing file ${fc+1}/${totalFiles}…`);
-        await yieldUI();
-      }
-
       showProgress(100,'Done!'); await yieldUI(); hideProgress();
-      const splitMsg = totalFiles > 1 ? ` Split into ${totalFiles} files (≤${inspCs2.toLocaleString()} records each).` : '';
-      setStatus(`✅ Generated ${inspRows.length.toLocaleString()} inspection records for ${assets.length.toLocaleString()} assets — ${YEARS} annual surveys.${splitMsg} 50% exceptions (alternating per year) via blank measurement.`);
+      setStatus(`✅ Generated ${inspRows.length.toLocaleString()} inspection records for ${assets.length.toLocaleString()} assets — ${YEARS} annual surveys, latest within last 15 months.`);
 
     } catch(err){
       alert('Error: '+err.message); hideProgress();
