@@ -735,7 +735,10 @@ function destPt(ll, bearing, distKm) {
   const lat1=ll.lat*f, lon1=ll.lng*f;
   const lat2=Math.asin(Math.sin(lat1)*Math.cos(d)+Math.cos(lat1)*Math.sin(d)*Math.cos(bearing));
   const lon2=lon1+Math.atan2(Math.sin(bearing)*Math.sin(d)*Math.cos(lat1),Math.cos(d)-Math.sin(lat1)*Math.sin(lat2));
-  return { lat: lat2/f, lng: lon2/f };  // plain object — no Leaflet dependency
+  let lng = lon2/f;
+  if (lng > 180) lng -= 360;
+  if (lng < -180) lng += 360;
+  return { lat: lat2/f, lng };  // plain object — no Leaflet dependency
 }
 function bearing(ll1,ll2) {
   const f=Math.PI/180, dL=(ll2.lng-ll1.lng)*f;
@@ -852,6 +855,8 @@ function switchTab(which) {
 function switchMode(mode) {
   document.getElementById('mode1Panel').style.display=mode===1?'':'none';
   document.getElementById('mode2Panel').style.display=mode===2?'':'none';
+  // Hierarchy not needed in Mode 2 — the uploaded file already has all data
+  document.getElementById('hierPanel').style.display=mode===1?'':'none';
   document.getElementById('modeBtn1').classList.toggle('active',mode===1);
   document.getElementById('modeBtn2').classList.toggle('active',mode===2);
   document.getElementById('tabAsset').style.display        = mode===2?'none':'';
@@ -1101,8 +1106,8 @@ async function generateFromHeader(header, assetType, spacingKm, generateBtn) {
           if (/Segment Type\*/i.test(ct))                       return segType;
           if (/Asset Name\*/i.test(ct))                         return assetName;
           if (/Primary Seg\?/i.test(ct))                        return 'Y';
-          if (/Longitude\*/i.test(ct))                          return points[i].lng.toFixed(6);
-          if (/Latitude\*/i.test(ct))                           return points[i].lat.toFixed(6);
+          if (/Longitude\*/i.test(ct))                          return parseFloat(points[i].lng.toFixed(6));
+          if (/Latitude\*/i.test(ct))                           return parseFloat(points[i].lat.toFixed(6));
           if (lonIdx!==-1 && ci===lonIdx+1 && ct)              return generateSpatialRef(ct,i,spacingKm);
           if (lonIdx!==-1 && ci===lonIdx+2 && ct)              return sr2AsNumber ? i+1 : generateSpatialRef(ct,i,spacingKm);
           if (lonIdx!==-1 && ci===lonIdx+3 && ct)              return generateSR3();
@@ -1166,6 +1171,8 @@ async function generateFromHeader(header, assetType, spacingKm, generateBtn) {
       }
 
       const assetsOnly = document.getElementById('assetsOnlyToggle').checked;
+      const YEARS = parseInt(document.getElementById('yearsSel1').value) || 10;
+      const surveyDates = buildSurveyDates(YEARS);
 
       /* ── INSPECTION ROWS (skipped if Assets Only toggle is on) ── */
       let inspHeader = [], inspRows = [];
@@ -1174,7 +1181,6 @@ async function generateFromHeader(header, assetType, spacingKm, generateBtn) {
         const inspMeasCols = extractMeasCols(header);
         inspHeader   = buildInspHeader(header);
 
-        const YEARS=parseInt(document.getElementById('yearsSel1').value)||10, surveyDates=buildSurveyDates(YEARS);
         const total=YEARS*assets.length;
         let cnt=0;
 
@@ -1323,26 +1329,34 @@ document.getElementById('inspOnlyForm').addEventListener('submit', async functio
       const total=YEARS*assets.length;
       const inspRows=[]; let cnt=0;
 
-      // 50/50 rule: pre-assign each asset as pass or fail
-      const passFlag2 = assets.map((_,idx) => idx % 2 === 0);
+      // Exception rule: 50% assets become exceptions, alternating which 50% each year.
+      // Exception = alternate measurement columns blank → triggers "Required and not collected".
 
       showProgress(2,`Generating ${total.toLocaleString()} inspection records…`); await yieldUI();
 
       for(let yr=0;yr<YEARS;yr++){
         const sd=surveyDates[yr];
-        const sn=`${pick(SURVEY_PFX)}-${sd.getFullYear()}`;
+        const surveyYear=sd.getFullYear();
+        const sn=`${pick(SURVEY_PFX)}-${surveyYear}`;
         const tech=pick(TECH_NAMES);
         const latest=yr===YEARS-1;
 
         for(let ai=0;ai<assets.length;ai++){
-          const a    = assets[ai];
-          const pass = passFlag2[ai];
-          const ir2  = generateCPReadings(a.couponM2, a.shuntFactor, pass);
+          const a       = assets[ai];
+          const isExcep = (ai + yr) % 2 === 0;   // alternates each year
+          const ir2     = generateCPReadings(a.couponM2, a.shuntFactor, true);
+
+          // Random month/day per asset, year fixed to survey year
+          const assetMonth  = randInt(0,11);
+          const assetMaxDay = new Date(surveyYear, assetMonth+1, 0).getDate();
+          const assetDay    = randInt(1, assetMaxDay);
+          const assetDate   = new Date(surveyYear, assetMonth, assetDay);
+
           inspRows.push([
-            a.segment,a.assetName,
-            ...inspMeasCols2.map(col=>getMeasVal(col, ir2)),
-            formatDate(sd),sn,tech,
-            generateInspComment(a.segment,a.assetName,sd.getFullYear(),latest,pass)
+            a.segment, a.assetName,
+            ...inspMeasCols2.map((col,ci) => (isExcep && ci % 2 === yr % 2) ? '' : getMeasVal(col, ir2)),
+            formatDate(assetDate), sn, tech,
+            generateInspComment(a.segment,a.assetName,surveyYear,latest,!isExcep)
           ]);
           cnt++;
           if(cnt%2000===0){showProgress(2+(cnt/total)*85,`${cnt.toLocaleString()} of ${total.toLocaleString()}…`);await yieldUI();}
