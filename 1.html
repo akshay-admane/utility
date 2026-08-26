@@ -1477,6 +1477,7 @@ document.getElementById('inspOnlyForm').addEventListener('submit', async functio
   const sfColIdx = hdr.findIndex(h => /Portable Shunt Factor|Shunt Factor/i.test(h));
   const csColIdx = hdr.findIndex(h => /Coupon Size/i.test(h));
 
+  const _seenAssets = new Set();
   const assets = rows.slice(1)
     .filter(r => r[nc] && String(r[nc]).trim())
     .map(r => {
@@ -1489,8 +1490,8 @@ document.getElementById('inspOnlyForm').addEventListener('submit', async functio
         couponM2    : cm2 / 10000,
         shuntFactor : (!isNaN(sf) && sf > 0) ? sf : 0.1,
       };
-    });
-
+    })
+    .filter(a => { if (_seenAssets.has(a.assetName)) return false; _seenAssets.add(a.assetName); return true; });
   if (!assets.length) return alert('No asset records found.');
 
   const prefix = assets[0].assetName.split('-')[0] || 'Asset';
