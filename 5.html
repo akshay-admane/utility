@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Excel Splitter - 500 Rows</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  body{font-family:Arial,sans-serif;background:#f4f6f8;margin:0;padding:40px}
+  .box{max-width:650px;margin:auto;background:#fff;padding:30px;border-radius:12px;
+       box-shadow:0 4px 18px rgba(0,0,0,.08)}
+  h2{margin-top:0}
+  input,button{font-size:16px;padding:12px;margin-top:12px}
+  button{background:#1677ff;color:white;border:0;border-radius:6px;cursor:pointer}
+  button:disabled{background:#aaa;cursor:not-allowed}
+  #status{margin-top:20px;white-space:pre-line}
+  .note{color:#555;font-size:14px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="box">
+  <h2>Excel Splitter</h2>
+  <p class="note">
+    Select an Excel file. The tool will create files containing <b>500 data rows each</b>,
+    while keeping the original header row in every output file.
+  </p>
+
+  <input type="file" id="fileInput" accept=".xlsx,.xls,.xlsm">
+  <br>
+  <button id="splitBtn" disabled>Split Excel File</button>
+
+  <div id="status"></div>
+</div>
+
+<script>
+const fileInput = document.getElementById("fileInput");
+const splitBtn = document.getElementById("splitBtn");
+const status = document.getElementById("status");
+
+fileInput.addEventListener("change", () => {
+  splitBtn.disabled = !fileInput.files.length;
+  status.textContent = "";
+});
+
+splitBtn.addEventListener("click", async () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  try {
+    splitBtn.disabled = true;
+    status.textContent = "Reading Excel file...";
+
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: "array" });
+
+    // Process the first worksheet
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+
+    // Get all rows as arrays. defval preserves blank cells.
+    const rows = XLSX.utils.sheet_to_json(sheet, {
+      header: 1,
+      defval: "",
+      raw: true
+    });
+
+    if (rows.length === 0) {
+      throw new Error("The Excel sheet is empty.");
+    }
+
+    const header = rows[0];
+    const dataRows = rows.slice(1);
+    const chunkSize = 500;
+    const totalFiles = Math.ceil(dataRows.length / chunkSize);
+
+    if (dataRows.length === 0) {
+      throw new Error("The Excel file contains a header but no data rows.");
+    }
+
+    status.textContent =
+      `Total data rows: ${dataRows.length}\\n` +
+      `Files to create: ${totalFiles}\\n\\nCreating files...`;
+
+    const baseName = file.name.replace(/\.[^.]+$/, "");
+
+    for (let i = 0; i < totalFiles; i++) {
+      const start = i * chunkSize;
+      const chunk = dataRows.slice(start, start + chunkSize);
+
+      // Header is added to every split file
+      const outputRows = [header, ...chunk];
+
+      const newSheet = XLSX.utils.aoa_to_sheet(outputRows);
+      const newWorkbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(newWorkbook, newSheet, sheetName);
+
+      const outputName =
+        `${baseName}_part_${String(i + 1).padStart(3, "0")}.xlsx`;
+
+      XLSX.writeFile(newWorkbook, outputName);
+
+      status.textContent =
+        `Total data rows: ${dataRows.length}\\n` +
+        `Files to create: ${totalFiles}\\n\\n` +
+        `Created: ${i + 1} / ${totalFiles}\\n` +
+        `${outputName}`;
+
+      // Small pause so the browser can update the status
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    status.textContent =
+      `Done!\\n\\n` +
+      `Created ${totalFiles} Excel files.\\n` +
+      `Each file contains up to 500 data rows + the header row.\\n\\n` +
+      `Files are downloaded automatically by your browser.`;
+
+  } catch (error) {
+    console.error(error);
+    status.textContent = "Error: " + error.message;
+  } finally {
+    splitBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
