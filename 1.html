@@ -1121,7 +1121,7 @@ async function generateFromHeader(header, assetType, spacingKm, generateBtn) {
       // Total combinations = N_l3 × 3 segments each
       const hierCombos = hierCtx
         ? hierCtx.flatMap(([l3Name, l3Data]) =>
-            l3Data.segments.map(seg => ({ l3Name, seg }))
+            (l3Data.segments || []).map(seg => ({ l3Name, seg }))
           )
         : null;
 
@@ -1720,9 +1720,9 @@ function parseAndSaveHierarchy() {
         newSegCount++;
       } else {
         // Existing level3Value — check if this specific segment is already stored
-        const already = existing[l3].segments.some(s => s.name === segName);
+        const already = (existing[l3].segments||[]).some(s => s.name === segName);
         if (!already) {
-          existing[l3].segments.push({ name: segName, type: segType });
+          (existing[l3].segments=existing[l3].segments||[]).push({ name: segName, type: segType });
           newSegCount++;
         } else {
           keptCount++;
@@ -2149,8 +2149,8 @@ function saveManualHierarchy() {
 
     if (existing[l3Name]) {
       // Merge: add only new segment names, keep existing
-      const existingNames = new Set(existing[l3Name].segments.map(s=>s.name));
-      segments.forEach(s => { if (!existingNames.has(s.name)) existing[l3Name].segments.push(s); });
+      const existingNames = new Set((existing[l3Name].segments||[]).map(s=>s.name));
+      segments.forEach(s => { if (!existingNames.has(s.name)) (existing[l3Name].segments=existing[l3Name].segments||[]).push(s); });
       updated++;
     } else {
       existing[l3Name] = { level1Value: company, level2Value: '', segments };
