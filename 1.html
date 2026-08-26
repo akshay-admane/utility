@@ -308,20 +308,68 @@ th{background:#f0f0f0;}
 
   <!-- MODE 2 -->
   <div id="mode2Panel" style="display:none">
-    <p class="mode-desc">Upload an <strong>existing asset file</strong> (.xlsx). The tool reads <em>Asset Name*</em> and <em>Segment*</em> from it and generates 10 years of inspection history.</p>
+    <p class="mode-desc">Generate inspection records from an existing asset file. Choose the file type below.</p>
     <form id="inspOnlyForm">
-      <label for="existingAssetFile">Upload Existing Asset File (.xlsx):</label>
+
+      <!-- Type selector -->
+      <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;padding:8px 14px;border:2px solid #3498db;border-radius:4px;background:#eaf4fd;">
+          <input type="radio" name="m2type" value="1" id="m2type1" checked onchange="switchM2Type()"/>
+          <span><strong>Type 1</strong> — Asset import file <span style="font-size:11px;color:#555;">(has measurement columns)</span></span>
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;padding:8px 14px;border:2px solid #ccc;border-radius:4px;">
+          <input type="radio" name="m2type" value="2" id="m2type2" onchange="switchM2Type()"/>
+          <span><strong>Type 2</strong> — Exported from web <span style="font-size:11px;color:#555;">(delinquent assets, no measurement cols)</span></span>
+        </label>
+      </div>
+
+      <!-- Type 2: company reference (hidden by default) -->
+      <div id="m2CompanySection" style="display:none;background:#f8f9ff;border:1px solid #d0d9f5;border-radius:5px;padding:12px;margin-bottom:12px;">
+        <p style="margin:0 0 10px;font-size:12px;color:#555;">Select the company and asset template to derive measurement columns.</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+          <div>
+            <label style="font-size:12px;font-weight:bold;">Company:</label>
+            <select id="m2CompanySel" style="display:block;margin-top:3px;padding:5px 9px;border:1px solid #ccc;border-radius:3px;font-size:13px;min-width:200px;" onchange="populateM2AssetTypes()">
+              <option value="">— select company —</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:bold;">Asset Type:</label>
+            <select id="m2AssetTypeSel" style="display:block;margin-top:3px;padding:5px 9px;border:1px solid #ccc;border-radius:3px;font-size:13px;min-width:180px;" onchange="populateM2AssetTypes(); previewM2MeasCols()">
+              <option value="">— select asset type —</option>
+            </select>
+          </div>
+
+        </div>
+        <div id="m2MeasPreview" style="margin-top:8px;font-size:11px;color:#555;"></div>
+      </div>
+
+      <label for="existingAssetFile" id="m2FileLabel">Upload Asset Import File (.xlsx):</label>
       <input type="file" id="existingAssetFile" accept=".xlsx" required/>
       <div id="assetReadStatus" style="margin-top:6px;font-size:13px;"></div>
-      <div style="margin-top:12px;">
-        <label for="yearsSel2" style="margin-top:0;font-size:13px;">Number of years:</label>
-        <select id="yearsSel2" style="display:block;margin-top:4px;padding:6px 10px;border:1px solid #ccc;border-radius:3px;font-size:13px;min-width:180px;">
-          <option value="3">3 years</option>
-          <option value="5">5 years</option>
-          <option value="10" selected>10 years</option>
-        </select>
+
+      <div style="margin-top:12px;display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end;">
+        <div>
+          <label for="yearsSel2" style="margin-top:0;font-size:13px;">Number of years:</label>
+          <select id="yearsSel2" style="display:block;margin-top:4px;padding:6px 10px;border:1px solid #ccc;border-radius:3px;font-size:13px;min-width:180px;">
+            <option value="thisyear">This year</option>
+            <option value="3">3 years</option>
+            <option value="5">5 years</option>
+            <option value="10" selected>10 years</option>
+          </select>
+        </div>
+        <div>
+          <label for="inspChunkSel2" style="margin-top:0;font-size:13px;">Records per file:</label>
+          <select id="inspChunkSel2" style="display:block;margin-top:4px;padding:6px 10px;border:1px solid #ccc;border-radius:3px;font-size:13px;min-width:180px;">
+            <option value="0">Single file</option>
+            <option value="1000">1,000 per file</option>
+            <option value="3000">3,000 per file</option>
+            <option value="10000" selected>10,000 per file</option>
+          </select>
+        </div>
       </div>
-      <button type="submit" class="btn orange" style="margin-top:12px">⚙ Generate Inspection Records</button>
+
+      <button type="submit" class="btn orange" style="margin-top:14px">⚙ Generate Inspection Records</button>
     </form>
   </div>
 
@@ -432,11 +480,11 @@ function generateSpatialRef(colName, idx, spacingKm) {
   }
   if (/\(km\)/i.test(colName)) {
     const v = idx * spacingKm;
-    return v===0 ? '0' : v.toFixed(randInt(1,3));
+    return v===0 ? '0' : v.toFixed(3);
   }
   if (/\(mi\)/i.test(colName)) {
     const v = idx * spacingKm * 0.621371;
-    return v===0 ? '0' : v.toFixed(randInt(1,3));
+    return v===0 ? '0' : v.toFixed(3);
   }
   return (idx * spacingKm).toFixed(3);
 }
@@ -468,10 +516,23 @@ const MONTH_NAMES = ["January","February","March","April","May","June",
 
 function buildSurveyDates(numYears) {
   const today = new Date();
-  const latest = addDays(addMonths(today, -randInt(1,15)), randInt(-15,15));
-  const dates  = [latest];
-  for (let i=1; i<numYears; i++) dates.push(addDays(addMonths(dates[dates.length-1],-12), randInt(-30,30)));
-  return dates.reverse();
+  // 0 = "This year": one random date within the current year, capped before today
+  if (numYears === 0) {
+    const yr    = today.getFullYear();
+    const maxM  = today.getMonth();
+    const month = randInt(0, maxM);
+    const maxD  = (month === maxM) ? Math.max(1, today.getDate()-1) : new Date(yr,month+1,0).getDate();
+    return [new Date(yr, month, randInt(1, maxD))];
+  }
+  // Fixed calendar years going back numYears from last year (avoid future dates)
+  const latestYear = today.getFullYear() - 1;
+  return Array.from({length: numYears}, (_, i) => {
+    const year   = latestYear - (numYears - 1 - i);
+    const month  = randInt(0, 11);
+    const maxDay = new Date(year, month+1, 0).getDate();
+    const day    = randInt(1, maxDay);
+    return new Date(year, month, day);
+  });
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1171,8 +1232,10 @@ async function generateFromHeader(header, assetType, spacingKm, generateBtn) {
       }
 
       const assetsOnly = document.getElementById('assetsOnlyToggle').checked;
-      const YEARS = parseInt(document.getElementById('yearsSel1').value) || 10;
-      const surveyDates = buildSurveyDates(YEARS);
+      const _y1v = document.getElementById('yearsSel1').value;
+      const YEARS = _y1v === 'thisyear' ? 1 : (parseInt(_y1v) || 10);
+      const _bsdN = _y1v === 'thisyear' ? 0 : YEARS;  // 0 = "this year" signal to buildSurveyDates
+      const surveyDates = buildSurveyDates(_bsdN);
 
       /* ── INSPECTION ROWS (skipped if Assets Only toggle is on) ── */
       let inspHeader = [], inspRows = [];
@@ -1259,6 +1322,95 @@ async function generateFromHeader(header, assetType, spacingKm, generateBtn) {
 /* ═══════════════════════════════════════════════════
    MODE 2 — FILE SELECT PREVIEW
 ═══════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════
+   MODE 2 — TYPE 1 / TYPE 2 SWITCHING
+═══════════════════════════════════════════════════ */
+function switchM2Type() {
+  const t = document.querySelector('input[name="m2type"]:checked').value;
+  const sec = document.getElementById('m2CompanySection');
+  const lbl = document.getElementById('m2FileLabel');
+  if (t === '2') {
+    sec.style.display = 'block';
+    lbl.textContent   = 'Upload Exported Assets File (.xlsx):';
+    populateM2Companies();
+  } else {
+    sec.style.display = 'none';
+    lbl.textContent   = 'Upload Asset Import File (.xlsx):';
+  }
+}
+
+function populateM2Companies() {
+  const sel = document.getElementById('m2CompanySel');
+  const stored = hierLoad();
+  const prev   = sel.value;
+  sel.innerHTML = '<option value="">— select company —</option>';
+  Object.keys(stored).forEach(name => {
+    const o = document.createElement('option');
+    o.value = o.textContent = name;
+    if (name === prev) o.selected = true;
+    sel.appendChild(o);
+  });
+  if (sel.value) populateM2AssetTypes();
+}
+
+function populateM2AssetTypes() {
+  const company  = document.getElementById('m2CompanySel').value;
+  const atSel    = document.getElementById('m2AssetTypeSel');
+  atSel.innerHTML = '<option value="">— select asset type —</option>';
+  document.getElementById('m2MeasPreview').textContent = '';
+  if (!company) return;
+  const stored = hierLoad();
+  const tplMap = (stored[company] || {}).__assetTemplates || {};
+  Object.keys(tplMap).forEach(at => {
+    const o = document.createElement('option');
+    o.value = o.textContent = at;
+    atSel.appendChild(o);
+  });
+}
+
+
+
+function previewM2MeasCols() {
+  const cols = getM2MeasCols();
+  const div  = document.getElementById('m2MeasPreview');
+  if (!cols.length) {
+    const at = document.getElementById('m2AssetTypeSel').value;
+    div.innerHTML = at ? '<span style="color:#e67e22;">⚠ No measurement defs found — re-paste the Asset Template API response in Parse API tab.</span>' : '';
+    return;
+  }
+  div.innerHTML = `<strong>${cols.length} measurement columns</strong> (from all templates): ` + cols.map(c=>`<code style="background:#eef;border-radius:3px;padding:1px 4px;font-size:10px;">${c}</code>`).join(' ');
+}
+
+/* Returns measurement column names from the selected template, or [] if not configured */
+function getM2MeasCols() {
+  const company  = document.getElementById('m2CompanySel').value;
+  const assetType= document.getElementById('m2AssetTypeSel').value;
+  if (!company || !assetType) return [];
+
+  const stored = hierLoad();
+  const entry  = stored[company] || {};
+  const defs   = entry.__assetTemplateDefs || {};
+  const tplMap = entry.__assetTemplates    || {};
+
+  // Collect all unique measurement columns from ALL templates of this asset type
+  const seen = new Set();
+  const cols = [];
+
+  // Primary source: full measurement type definitions (populated after re-parsing template API)
+  const tplNames = tplMap[assetType] || [];
+  tplNames.forEach(tplName => {
+    const key    = `${assetType}::${tplName}`;
+    const mTypes = defs[key] || [];
+    mTypes.forEach(m => {
+      const col = `${m.source} ${m.type}`;
+      if (!seen.has(col)) { seen.add(col); cols.push(col); }
+    });
+  });
+
+  // Fallback: if __assetTemplateDefs is empty (old data), return empty and warn
+  return cols;
+}
+
 document.getElementById('existingAssetFile').addEventListener('change', function(){
   const el=document.getElementById('assetReadStatus'), file=this.files[0]; if(!file) return;
   const r=new FileReader();
@@ -1268,7 +1420,7 @@ document.getElementById('existingAssetFile').addEventListener('change', function
       const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
       const hdr=rows[0]||[];
       const nc=hdr.findIndex(h=>/Asset Name\*/i.test(h));
-      const sc=hdr.findIndex(h=>/Segment\*/i.test(h));
+      const sc=hdr.findIndex(h=>{ const t=h.trim(); return t==='Segment*'||t==='Segment'; });
       if(nc===-1||sc===-1){el.style.color='#e74c3c';el.textContent='⚠ Could not find "Asset Name*" or "Segment*" columns.';return;}
       const cnt=rows.slice(1).filter(r=>r[nc]&&String(r[nc]).trim()).length;
       el.style.color='#27ae60';
@@ -1283,49 +1435,75 @@ document.getElementById('existingAssetFile').addEventListener('change', function
 ═══════════════════════════════════════════════════ */
 document.getElementById('inspOnlyForm').addEventListener('submit', async function(e){
   e.preventDefault();
-  const fileInput=document.getElementById('existingAssetFile');
-  if(!fileInput.files.length) return alert('Please select an existing asset file.');
+  const fileInput = document.getElementById('existingAssetFile');
+  if (!fileInput.files.length) return alert('Please select an asset file.');
 
-  const btn=this.querySelector('button[type="submit"]');
-  btn.disabled=true; btn.textContent='⏳ Working…';
+  const m2type = document.querySelector('input[name="m2type"]:checked').value;
+  let type2MeasCols = [];
+  if (m2type === '2') {
+    type2MeasCols = getM2MeasCols();
+    if (!type2MeasCols.length) {
+      const company  = document.getElementById('m2CompanySel').value;
+      const assetType= document.getElementById('m2AssetTypeSel').value;
+      if (!company || !assetType)
+        return alert('Type 2: please select a Company and Asset Type.');
+      return alert('Type 2: No measurement column definitions found for this Asset Type.\n\nPlease re-paste the getAssetTypeTemplateByPrimaryCompanyId API response in the Company Hierarchy → Parse API tab to load measurement types.');
+    }
+  }
 
-  const reader=new FileReader();
-  reader.onload=async function(ev){
-    try{
-      const wb=XLSX.read(ev.target.result,{type:'binary'});
-      const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
-      const hdr=rows[0]||[];
-      const nc=hdr.findIndex(h=>/Asset Name\*/i.test(h));
-      const sc=hdr.findIndex(h=>/Segment\*/i.test(h));
-      if(nc===-1||sc===-1) return alert('The file must contain "Asset Name*" and "Segment*" columns.');
+  const btn = this.querySelector('button[type=submit]');
+  btn.disabled = true; btn.textContent = '⏳ Generating…';
+  clearDownloads(); setStatus(''); hideProgress(); showProgress(0,'Reading asset file…'); await yieldUI();
 
-      // Try to read Portable Shunt Factor and Coupon Size from the uploaded asset file
-      const sfColIdx  = hdr.findIndex(h => /Portable Shunt Factor|Shunt Factor/i.test(h));
-      const csColIdx  = hdr.findIndex(h => /Coupon Size/i.test(h));
+  const data = await fileInput.files[0].arrayBuffer();
+  const wb2  = XLSX.read(data);
+  const ws2  = wb2.Sheets[wb2.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws2, {header:1, defval:''});
+  if (rows.length < 2) {
+    showProgress(0,''); setStatus('⚠ File has no data rows.');
+    btn.disabled=false; btn.textContent='⚙ Generate Inspection Records'; return;
+  }
 
-      const assets=rows.slice(1)
-        .filter(r=>r[nc]&&String(r[nc]).trim())
-        .map(r=>{
-          // Coupon size from file (cm²) → convert to m²; fallback to 25 cm² default
-          const cs  = csColIdx !== -1 ? parseFloat(r[csColIdx]) : NaN;
-          const cm2 = (!isNaN(cs) && cs > 0) ? cs : 25;
-          // Shunt factor from file (A/V); fallback to 0.1 A/V (10Ω shunt)
-          const sf  = sfColIdx !== -1 ? parseFloat(r[sfColIdx]) : NaN;
-          return {
-            assetName   : String(r[nc]).trim(),
-            segment     : String(r[sc]||'').trim(),
-            couponM2    : cm2 / 10000,
-            shuntFactor : (!isNaN(sf) && sf > 0) ? sf : 0.1,
-          };
-        });
-      if(!assets.length) return alert('No asset records found.');
+  const hdr = rows[0].map(h => String(h).trim());
+  // Asset Name: handles "Asset Name*" (import file) or "Asset Name" / "Name" (exported file)
+  const nc  = hdr.findIndex(h => /Asset Name/i.test(h) || /^Name$/i.test(h));
+  // Segment: "Segment*" or bare "Segment" (not Segment Type)
+  const sc  = hdr.findIndex(h => { const t=h.trim(); return t==='Segment*'||t==='Segment'; });
+  if (nc === -1) {
+    setStatus('⚠ No "Asset Name" column found.');
+    btn.disabled=false; btn.textContent='⚙ Generate Inspection Records'; return;
+  }
 
-      const prefix=assets[0].assetName.split('-')[0]||'Asset';
-      // Build inspection header from the uploaded asset file's header
-      const inspMeasCols2 = extractMeasCols(hdr);
-      const inspHeader2   = buildInspHeader(hdr);
+  const sfColIdx = hdr.findIndex(h => /Portable Shunt Factor|Shunt Factor/i.test(h));
+  const csColIdx = hdr.findIndex(h => /Coupon Size/i.test(h));
 
-      const YEARS=parseInt(document.getElementById('yearsSel2').value)||10, surveyDates=buildSurveyDates(YEARS);
+  const assets = rows.slice(1)
+    .filter(r => r[nc] && String(r[nc]).trim())
+    .map(r => {
+      const cs  = csColIdx !== -1 ? parseFloat(r[csColIdx]) : NaN;
+      const cm2 = (!isNaN(cs) && cs > 0) ? cs : 25;
+      const sf  = sfColIdx !== -1 ? parseFloat(r[sfColIdx]) : NaN;
+      return {
+        assetName   : String(r[nc]).trim(),
+        segment     : sc !== -1 ? String(r[sc] || '').trim() : '',
+        couponM2    : cm2 / 10000,
+        shuntFactor : (!isNaN(sf) && sf > 0) ? sf : 0.1,
+      };
+    });
+
+  if (!assets.length) return alert('No asset records found.');
+
+  const prefix = assets[0].assetName.split('-')[0] || 'Asset';
+
+  // Measurement columns:
+  // Type 1 — extract from file header (has Threshold Operator / Threshold columns)
+  // Type 2 — use selected company template from localStorage
+  const inspMeasCols2 = m2type === '2' ? type2MeasCols : extractMeasCols(hdr);
+  const inspHeader2   = ['Segment*', 'Asset Name*', ...inspMeasCols2, 'Date of Inspection*', 'Survey Name*', 'Technician', 'Comments'];
+
+      const _y2v = document.getElementById('yearsSel2').value;
+      const YEARS = _y2v === 'thisyear' ? 1 : (parseInt(_y2v) || 10);
+      const surveyDates = buildSurveyDates(_y2v === 'thisyear' ? 0 : YEARS);
       const total=YEARS*assets.length;
       const inspRows=[]; let cnt=0;
 
@@ -1364,27 +1542,34 @@ document.getElementById('inspOnlyForm').addEventListener('submit', async functio
       }
 
       showProgress(90,'Writing XLSX…'); await yieldUI();
-      showPreviewTable('previewInspTable',inspHeader2,inspRows.slice(0,10));
+      const previewRows2 = Array.from({length:YEARS},(_,yr)=>inspRows[yr*assets.length]).filter(Boolean);
+      showPreviewTable('previewInspTable',inspHeader2,previewRows2);
       document.getElementById('inspBadge').textContent=`${inspRows.length.toLocaleString()} records (${YEARS} yrs × ${assets.length.toLocaleString()} assets)`;
       switchTab('inspection');
-      // Mode 2: single inspection file (no asset file being generated, no chunking)
-      clearDownloads();
-      const inspBlob2 = xlsxBlob([inspHeader2,...inspRows],'Inspections');
-      const m2Link = makeDownloadLink(inspBlob2,`${prefix}_Inspection_Import.xlsx`,
-        `⬇ Inspection Import File  (${inspRows.length.toLocaleString()} records)`,'#e67e22');
-      document.getElementById('downloadRow').appendChild(m2Link);
-      document.getElementById('downloadContainer').style.display = 'block';
-      showProgress(100,'Done!'); await yieldUI(); hideProgress();
-      setStatus(`✅ Generated ${inspRows.length.toLocaleString()} inspection records for ${assets.length.toLocaleString()} assets — ${YEARS} annual surveys, latest within last 15 months.`);
 
-    } catch(err){
-      alert('Error: '+err.message); hideProgress();
-    } finally {
+      // Chunked downloads
+      const inspChunk2 = parseInt(document.getElementById('inspChunkSel2').value) || 0;
+      const inspCs2    = inspChunk2 > 0 ? inspChunk2 : inspRows.length;
+      const totalFiles = Math.ceil(inspRows.length / inspCs2);
+      clearDownloads();
+      document.getElementById('downloadContainer').style.display = 'block';
+      const dlRow2 = document.getElementById('downloadRow');
+      for (let fc=0; fc<totalFiles; fc++) {
+        const s = fc*inspCs2, e = Math.min(s+inspCs2, inspRows.length);
+        const fn  = totalFiles>1 ? `${prefix}_Inspection_Import_${fc+1}.xlsx` : `${prefix}_Inspection_Import.xlsx`;
+        const lbl = totalFiles>1
+          ? `⬇ Inspection File ${fc+1}/${totalFiles}  (${(e-s).toLocaleString()} records)`
+          : `⬇ Inspection Import File  (${inspRows.length.toLocaleString()} records)`;
+        dlRow2.appendChild(makeDownloadLink(xlsxBlob([inspHeader2,...inspRows.slice(s,e)],'Inspections'), fn, lbl, '#e67e22'));
+        showProgress(90+((fc+1)/totalFiles)*9, `Writing file ${fc+1}/${totalFiles}…`);
+        await yieldUI();
+      }
+      showProgress(100,'Done!'); await yieldUI(); hideProgress();
+      const splitMsg2 = totalFiles>1 ? ` Split into ${totalFiles} files.` : '';
+      setStatus(`✅ Generated ${inspRows.length.toLocaleString()} inspection records for ${assets.length.toLocaleString()} assets — ${YEARS} annual survey${YEARS!==1?'s':''}.${splitMsg2}`);
       btn.disabled=false; btn.textContent='⚙ Generate Inspection Records';
-    }
-  };
-  reader.readAsBinaryString(fileInput.files[0]);
 });
+
 
 /* ═══════════════════════════════════════════════════
    COMPANY HIERARCHY — localStorage storage
@@ -1452,20 +1637,33 @@ function parseAndSaveHierarchy() {
     // Ensure __assetTemplates map exists (separate from l3 keys)
     const tplMap  = entry.__assetTemplates || {};
 
+    // Also store full measurement type definitions for Type 2 Mode 2 inspection generation
+    const tplDefs = entry.__assetTemplateDefs || {};
+
     tplItems.forEach(atItem => {
       const assetType = atItem.assetType;
       if (!assetType) return;
-      const names = (atItem.assetTypeTemplates || [])
-        .filter(t => !t.isDeleted && t.assetTypeTemplateName)
-        .map(t => t.assetTypeTemplateName);
-      if (!names.length) return;
-      // Merge — keep existing, add new names
+      const templates = (atItem.assetTypeTemplates || []).filter(t => !t.isDeleted && t.assetTypeTemplateName);
+      if (!templates.length) return;
+
+      // Names list (existing usage — for UI pills)
       const existing = new Set(tplMap[assetType] || []);
-      names.forEach(n => existing.add(n));
+      templates.forEach(t => existing.add(t.assetTypeTemplateName));
       tplMap[assetType] = [...existing];
+
+      // Full measurement type definitions — keyed by "assetType::templateName"
+      templates.forEach(t => {
+        const key = `${assetType}::${t.assetTypeTemplateName}`;
+        const mTypes = (t.measurementTypes || [])
+          .filter(m => !m.isDeleted)
+          .sort((a,b) => (a.measurementOrder||0) - (b.measurementOrder||0))
+          .map(m => ({ source: m.measurementSource, type: m.measurementType, unit: m.unit||'', order: m.measurementOrder||0 }));
+        if (mTypes.length) tplDefs[key] = mTypes;
+      });
     });
 
-    entry.__assetTemplates = tplMap;
+    entry.__assetTemplates    = tplMap;
+    entry.__assetTemplateDefs = tplDefs;
     stored[company] = entry;
     hierSave(stored);
     refreshHierUI();
