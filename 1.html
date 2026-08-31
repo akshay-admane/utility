@@ -1133,16 +1133,16 @@ async function generateFromHeader(header, assetType, spacingKm, generateBtn) {
         { l3Name: null, seg: { name: `Seg- ${creationMonth} 2`, type: 'Spur'     } },
         { l3Name: null, seg: { name: `Seg- ${creationMonth} 3`, type: 'Mainline' } },
       ];
-      const combos = hierCombos || FALLBACK_SEGS;
+      const combos = (hierCombos && hierCombos.length > 0) ? hierCombos : FALLBACK_SEGS;
 
       for (let i=0; i<points.length; i++) {
         const startNum  = (parseInt(document.getElementById('assetStartNum').value) || 1) - 1;
         const assetName = generateAssetName(assetType, today, i + startNum);
         // Cycle through hierarchy combos (l3 × segment)
         const combo   = combos[i % combos.length];
-        const segment = combo.seg.name;
-        const segType = combo.seg.type;
-        const l3Value = combo.l3Name;    // null when no hierarchy
+        const segment = combo?.seg?.name || 'Seg-Default';
+        const segType = combo?.seg?.type || 'Mainline';
+        const l3Value = combo?.l3Name    || '';
         const loc     = getLocation();
         // Fixed physical metadata for this coupon/shunt — stored in asset file
         const meta      = generateAssetMeta();
